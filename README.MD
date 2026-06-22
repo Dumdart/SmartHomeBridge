@@ -4,7 +4,7 @@ Smart Home Bridge helps connect local smart home systems with devices that do no
 
 This project provides a configurable bridge between those devices and MQTT. Smart home systems can then read state and send commands through MQTT topics instead of talking to each vendor API directly.
 
-Smart Home Bridge can run from the console or inside Docker. Custom devices can be defined and wired into the same bridge pattern.
+Smart Home Bridge can run from the console, from the optional local desktop GUI, or inside Docker. Custom devices can be defined and wired into the same bridge pattern.
 
 ## Architecture on Loxone
 
@@ -44,6 +44,20 @@ The Loxone App is not integrated directly with the device vendor API. Instead, t
 * Handle retries, timeouts, and error states
 * Keep vendor-specific logic isolated behind adapters
 
+### Local Desktop GUI
+
+The optional PySide6 GUI is intended for local startup and diagnostics only. It
+is available through the `loxone-bridge-gui` console script after installing the
+`gui` extra, and is not installed or started by the Docker image.
+
+The GUI provides:
+
+* Bridge status, including current door state, command MQTT topic, and HTTP diagnostics endpoint
+* Environment Settings for MQTT host, port, username, password, base topic, HTTP host, and HTTP port
+* Save Environment support that writes MQTT and HTTP updates to `.env`
+* Chicken door controls for open, close, stop, and refresh
+* Activity logging in the window and in `LOG_FILE_PATH`, defaulting to `logs/loxone-bridge.log`
+
 ### MQTT Broker
 
 * Provide the local message bus between the backend and Loxone
@@ -62,7 +76,8 @@ pip install -e ".[dev]"
 ```
 
 Install the optional desktop GUI dependencies when you want the local control
-panel:
+panel. The GUI is a local development/runtime tool and is not part of the
+Docker image:
 
 ```bash
 pip install -e ".[gui]"
@@ -74,15 +89,16 @@ pip install -e ".[gui]"
 python .\src\loxone_bridge\__main__.py
 ```
 
-Run the PySide6 GUI:
+Run the PySide6 GUI locally:
 
 ```bash
 loxone-bridge-gui
 ```
 
-The GUI includes an Environment Settings panel for MQTT and HTTP settings. Save
-updates writes those values to `.env`; restart the backend service for a running
-bridge process to pick up the changed environment.
+Use the GUI to inspect bridge status, trigger chicken door commands, review
+activity output, and edit MQTT/HTTP environment settings. Save Environment
+writes those values to `.env`; restart any already-running backend service for
+that process to pick up the changed environment.
 
 4. Run tests:
 
@@ -96,9 +112,10 @@ pytest
 docker compose up -d
 ```
 
-Docker runs only the bridge service logic. The image installs the base package
-without the optional PySide6 GUI dependencies, and the container command is
-`loxone-bridge`.
+Docker runs only the bridge service logic. The Dockerfile installs the base
+package without the optional PySide6 GUI dependencies, and the container command
+is `loxone-bridge`. Start the GUI locally with `loxone-bridge-gui` when you need
+desktop controls or diagnostics.
 
 Build the image directly:
 
