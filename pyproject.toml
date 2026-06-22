@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "loxone-bridge"
+version = "0.1.0"
+description = "A bridge for connecting Loxone to other systems"
+requires-python = ">=3.11"
+dependencies = [
+    "paho-mqtt",
+    "python-dotenv",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+]
+gui = [
+    "PySide6",
+]
+
+[project.scripts]
+loxone-bridge = "loxone_bridge.__main__:run"
+loxone-bridge-gui = "loxone_bridge.gui:run"
+
+[tool.setuptools.packages.find]
+where = ["src"]

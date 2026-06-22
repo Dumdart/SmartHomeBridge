@@ -1,0 +1,23 @@
+from dataclasses import dataclass
+from enum import Enum
+from loxone_bridge.core.device import device
+from loxone_bridge.infrastructure.api.http_gate import HttpGateInterface
+
+
+class door_position(str, Enum):
+    OPEN = "open"
+    CLOSED = "closed"
+    UNKNOWN = "unknown"
+
+
+class chicken_door(device):
+    def __init__(self, device_id, name, position: door_position):
+        self.device_id = device_id
+        self.name = name
+        self.position = position
+    
+    def get_device_state(self):        
+        return self.position
+
+    def set_device_state(self, state):
+        self.position = state 
