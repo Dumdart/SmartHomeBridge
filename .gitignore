@@ -20,6 +20,7 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+.pio/
 .coverage
 htmlcov/
 
@@ -28,3 +29,6 @@ dist/
 *.egg-info/
 
 .python-version
+
+# ESP32-CAM local credentials
+src/chicken_thread_detetor_esp32cam/esp32cam_extention/include/secrets.h

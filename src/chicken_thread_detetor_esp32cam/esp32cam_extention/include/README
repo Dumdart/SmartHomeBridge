@@ -1,0 +1,15 @@
+
+ESP32-CAM local configuration
+=============================
+
+Copy `secrets.example.h` to `secrets.h` and replace the placeholder Wi-Fi values:
+
+```
+#define WIFI_SSID "your-wifi-ssid"
+#define WIFI_PASSWORD "your-wifi-password"
+#define CAMERA_HOSTNAME "chicken-barn-esp32cam"
+```
+
+`secrets.h` is ignored by Git so Wi-Fi credentials are not committed to the public repo.
+The firmware can also be configured with PlatformIO `build_flags` that define the same
+macros if you prefer not to create a local header.
