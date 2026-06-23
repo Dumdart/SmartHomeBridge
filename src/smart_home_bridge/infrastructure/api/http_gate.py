@@ -6,7 +6,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, build_opener
 
-from loxone_bridge.config import HttpConfig
+from smart_home_bridge.config import HttpConfig
 
 
 @dataclass(frozen=True)

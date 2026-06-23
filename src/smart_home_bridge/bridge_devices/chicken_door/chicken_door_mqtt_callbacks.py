@@ -1,7 +1,7 @@
 import asyncio
 
-from loxone_bridge.bridge_devices.chicken_door.door_controller import door_controller
-from loxone_bridge.infrastructure.mqtt.mqtt_callbacks import mqtt_callbacks
+from smart_home_bridge.bridge_devices.chicken_door.door_controller import door_controller
+from smart_home_bridge.infrastructure.mqtt.mqtt_callbacks import mqtt_callbacks
 
 
 class chicken_door_mqtt_callbacks(mqtt_callbacks):

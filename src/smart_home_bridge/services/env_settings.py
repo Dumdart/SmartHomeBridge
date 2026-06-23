@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from loxone_bridge.config import HttpConfig, MqttConfig, app_config, load_config
+from smart_home_bridge.config import HttpConfig, MqttConfig, app_config, load_config
 
 
 class EnvSettingsService:

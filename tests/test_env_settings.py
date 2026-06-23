@@ -1,5 +1,5 @@
-from loxone_bridge.config import HttpConfig, MqttConfig
-from loxone_bridge.services import EnvSettingsService
+from smart_home_bridge.config import HttpConfig, MqttConfig
+from smart_home_bridge.services import EnvSettingsService
 
 
 def test_env_settings_saves_mqtt_and_http_config(tmp_path):

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from loxone_bridge.core.command import command, command_result
+from smart_home_bridge.core.command import command, command_result
 
 
 class device_controller(ABC):

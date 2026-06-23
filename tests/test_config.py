@@ -1,4 +1,4 @@
-from loxone_bridge.config import load_config
+from smart_home_bridge.config import load_config
 
 
 def test_load_config_reads_log_file_path(tmp_path):

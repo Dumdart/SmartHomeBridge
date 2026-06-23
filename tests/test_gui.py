@@ -1,10 +1,10 @@
 import asyncio
 from pathlib import Path
 
-from loxone_bridge.bridge_devices.chicken_door import door_position
-from loxone_bridge.config import DoorApiConfig, HttpConfig, MqttConfig, app_config
-from loxone_bridge.gui import run
-from loxone_bridge.gui.factory import create_gui_bridge_context
+from smart_home_bridge.bridge_devices.chicken_door import door_position
+from smart_home_bridge.config import DoorApiConfig, HttpConfig, MqttConfig, app_config
+from smart_home_bridge.gui import run
+from smart_home_bridge.gui.factory import create_gui_bridge_context
 
 
 def _config():

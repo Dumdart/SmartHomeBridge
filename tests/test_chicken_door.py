@@ -1,14 +1,14 @@
 import asyncio
 from types import SimpleNamespace
 
-from loxone_bridge.bridge_devices.chicken_door import (
+from smart_home_bridge.bridge_devices.chicken_door import (
     chicken_door,
     chicken_door_mqtt_callbacks,
     door_controller,
     door_position,
 )
-from loxone_bridge.config import HttpConfig, MqttConfig, app_config, DoorApiConfig
-from loxone_bridge.infrastructure.api.http_gate import HttpGateInterface
+from smart_home_bridge.config import HttpConfig, MqttConfig, app_config, DoorApiConfig
+from smart_home_bridge.infrastructure.api.http_gate import HttpGateInterface
 
 
 class FakeHttpGate(HttpGateInterface):
@@ -62,13 +62,13 @@ def test_mqtt_callback_decodes_payload_and_executes_command():
 
 
 def test_application_entrypoint_imports():
-    from loxone_bridge.__main__ import App
+    from smart_home_bridge.__main__ import App
 
     assert App.__name__ == "App"
 
 
 def test_application_wires_door_commands_to_mqtt_publish():
-    from loxone_bridge.__main__ import App
+    from smart_home_bridge.__main__ import App
 
     config = app_config(
         door_api=DoorApiConfig(

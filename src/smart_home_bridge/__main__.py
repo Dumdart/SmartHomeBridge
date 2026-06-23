@@ -1,8 +1,8 @@
 import asyncio
-from loxone_bridge.config import app_config, load_config
-from loxone_bridge.infrastructure.api.http_gate import HttpGate
-from loxone_bridge.infrastructure.mqtt.mqtt_gate import MqttGate
-from loxone_bridge.bridge_devices.chicken_door import (
+from smart_home_bridge.config import app_config, load_config
+from smart_home_bridge.infrastructure.api.http_gate import HttpGate
+from smart_home_bridge.infrastructure.mqtt.mqtt_gate import MqttGate
+from smart_home_bridge.bridge_devices.chicken_door import (
     chicken_door,
     chicken_door_mqtt_callbacks,
     door_controller,

@@ -1,8 +1,8 @@
 import sys
 
-from loxone_bridge.config import load_config
-from loxone_bridge.gui.factory import create_gui_bridge_context
-from loxone_bridge.services import EnvSettingsService
+from smart_home_bridge.config import load_config
+from smart_home_bridge.gui.factory import create_gui_bridge_context
+from smart_home_bridge.services import EnvSettingsService
 
 
 def run():
@@ -13,7 +13,7 @@ def run():
             'PySide6 is required for the GUI. Install it with: pip install -e ".[gui]"'
         ) from exc
 
-    from loxone_bridge.gui.main_window import MainWindow
+    from smart_home_bridge.gui.main_window import MainWindow
 
     env_settings = EnvSettingsService()
     qt_app = QApplication(sys.argv)

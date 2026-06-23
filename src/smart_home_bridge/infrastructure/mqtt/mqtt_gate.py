@@ -1,8 +1,8 @@
 from collections.abc import Callable
 
-from loxone_bridge.config import MqttConfig
-from loxone_bridge.infrastructure.mqtt.mqtt_callbacks import mqtt_callbacks
-from loxone_bridge.infrastructure.mqtt.mqtt_client import MqttClient
+from smart_home_bridge.config import MqttConfig
+from smart_home_bridge.infrastructure.mqtt.mqtt_callbacks import mqtt_callbacks
+from smart_home_bridge.infrastructure.mqtt.mqtt_client import MqttClient
 
 
 class MqttGate:

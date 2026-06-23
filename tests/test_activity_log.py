@@ -1,4 +1,4 @@
-from loxone_bridge.services import ActivityLog
+from smart_home_bridge.services import ActivityLog
 
 
 def test_activity_log_records_messages_to_file(tmp_path):

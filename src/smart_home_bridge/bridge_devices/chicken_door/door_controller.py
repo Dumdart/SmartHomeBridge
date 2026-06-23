@@ -1,7 +1,7 @@
-from loxone_bridge.bridge_devices.chicken_door.chicken_door import chicken_door, door_position
-from loxone_bridge.core import device_controller
-from loxone_bridge.core.command import Publishable, command, command_result
-from loxone_bridge.infrastructure.api.http_gate import HttpGateInterface
+from smart_home_bridge.bridge_devices.chicken_door.chicken_door import chicken_door, door_position
+from smart_home_bridge.core import device_controller
+from smart_home_bridge.core.command import Publishable, command, command_result
+from smart_home_bridge.infrastructure.api.http_gate import HttpGateInterface
 
 
 class door_controller(device_controller):

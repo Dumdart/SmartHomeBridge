@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
-from loxone_bridge.core.device import device
-from loxone_bridge.infrastructure.api.http_gate import HttpGateInterface
+from smart_home_bridge.core.device import device
+from smart_home_bridge.infrastructure.api.http_gate import HttpGateInterface
 
 
 class door_position(str, Enum):

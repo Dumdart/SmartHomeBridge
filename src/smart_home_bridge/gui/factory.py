@@ -1,13 +1,13 @@
 from dataclasses import dataclass
 
-from loxone_bridge.bridge_devices.chicken_door import (
+from smart_home_bridge.bridge_devices.chicken_door import (
     chicken_door,
     door_controller,
     door_position,
 )
-from loxone_bridge.config import app_config
-from loxone_bridge.infrastructure.api.http_gate import HttpGate
-from loxone_bridge.services import ActivityLog, EnvSettingsService
+from smart_home_bridge.config import app_config
+from smart_home_bridge.infrastructure.api.http_gate import HttpGate
+from smart_home_bridge.services import ActivityLog, EnvSettingsService
 
 
 @dataclass(frozen=True)

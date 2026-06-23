@@ -4,7 +4,7 @@ import paho.mqtt.client as paho
 from paho import mqtt
 
 
-from loxone_bridge.config import MqttConfig
+from smart_home_bridge.config import MqttConfig
 
 
 class MqttClient:

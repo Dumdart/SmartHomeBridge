@@ -16,9 +16,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from loxone_bridge.bridge_devices.chicken_door import door_position
-from loxone_bridge.config import HttpConfig, MqttConfig
-from loxone_bridge.gui.factory import GuiBridgeContext, create_gui_bridge_context
+from smart_home_bridge.bridge_devices.chicken_door import door_position
+from smart_home_bridge.config import HttpConfig, MqttConfig
+from smart_home_bridge.gui.factory import GuiBridgeContext, create_gui_bridge_context
 
 
 class MainWindow(QMainWindow):

@@ -1,7 +1,7 @@
 from urllib.error import HTTPError
 
-from loxone_bridge.config import HttpConfig
-from loxone_bridge.infrastructure.api.http_gate import HttpGate, HttpGateInterface
+from smart_home_bridge.config import HttpConfig
+from smart_home_bridge.infrastructure.api.http_gate import HttpGate, HttpGateInterface
 
 
 class FakeHeaders:
