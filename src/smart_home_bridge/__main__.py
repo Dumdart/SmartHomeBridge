@@ -8,6 +8,11 @@ from smart_home_bridge.bridge_devices.chicken_door import (
     door_controller,
     door_position,
 )
+from smart_home_bridge.bridge_devices.chicken_thread_detector import (
+    chicken_thread_detector,
+    chicken_thread_detector_controller,
+    chicken_thread_detector_mqtt_callbacks,
+)
 
 
 class App:
@@ -22,11 +27,22 @@ class App:
         self.chicken_door_mqtt_gate = MqttGate(config.mqtt, chicken_door_mqtt_callbacks(self.door_controller), "chicken-door")
         self.door_controller.set_publishable(self.chicken_door_mqtt_gate.publish)
 
+        self.thread_detector = chicken_thread_detector(2, "chicken_thread_detector")
+        self.thread_detector_controller = chicken_thread_detector_controller(self.thread_detector)
+        self.chicken_thread_detector_mqtt_gate = MqttGate(
+            config.mqtt,
+            chicken_thread_detector_mqtt_callbacks(self.thread_detector_controller),
+            "chicken-thread-detector",
+        )
+        self.thread_detector_controller.set_publishable(self.chicken_thread_detector_mqtt_gate.publish)
+
     async def start(self):           
         print(f"Starting {self.name} application\n")
 
         await self.chicken_door_mqtt_gate.start()
         await self.chicken_door_mqtt_gate.subscribe()
+        await self.chicken_thread_detector_mqtt_gate.start()
+        await self.chicken_thread_detector_mqtt_gate.subscribe()
 
         await asyncio.Event().wait()
 
@@ -34,6 +50,7 @@ class App:
         try:
             print(f"\nStopping {self.name} application.")
             await self.chicken_door_mqtt_gate.stop()
+            await self.chicken_thread_detector_mqtt_gate.stop()
 
         except Exception as e:
             print(f"Error during shutdown: {e}")
