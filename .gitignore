@@ -28,3 +28,6 @@ dist/
 
 # ESP32-CAM local credentials
 src/firmware/esp32cam_extention/include/secrets.h
+
+# Logs
+logs/
