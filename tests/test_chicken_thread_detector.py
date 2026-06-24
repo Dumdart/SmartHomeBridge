@@ -208,14 +208,13 @@ def test_application_wires_thread_detector_to_mqtt_publish():
         http=HttpConfig(host="localhost", port=8080),
         log_level="INFO",
     )
-    app = App(config)
     published = []
 
     class FakeMqttClient:
         async def publish(self, topic, payload, on_publish=None):
             published.append((topic, json.loads(payload)))
 
-    app.chicken_thread_detector_mqtt_gate.client = FakeMqttClient()
+    app = App(config, mqtt_client_factory=lambda _: FakeMqttClient())
 
     result = asyncio.run(
         app.thread_detector_controller.score_frame_from_json(
@@ -326,7 +325,6 @@ def test_threat_pipeline_run_publishes_assessment():
         camera=CameraConfig(host="esp32cam.local", port=80),
         chicken_threat=ChickenThreatConfig(enabled=True),
     )
-    app = App(config)
     published = []
 
     class FakeCameraClient:
@@ -348,7 +346,7 @@ def test_threat_pipeline_run_publishes_assessment():
         async def publish(self, topic, payload, on_publish=None):
             published.append((topic, json.loads(payload)))
 
-    app.chicken_thread_detector_mqtt_gate.client = FakeMqttClient()
+    app = App(config, mqtt_client_factory=lambda _: FakeMqttClient())
     app.chicken_threat_pipeline.camera_client = FakeCameraClient()
     app.chicken_threat_pipeline.inference_service = FakeInferenceService()
 

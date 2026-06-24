@@ -152,15 +152,14 @@ def test_application_wires_door_commands_to_mqtt_publish():
         http=HttpConfig(host="localhost", port=8080),
         log_level="INFO",
     )
-    app = App(config)
-    app.door.position = door_position.CLOSED
     published = []
 
     class FakeMqttClient:
         async def publish(self, topic, payload, on_publish=None):
             published.append((topic, payload))
 
-    app.chicken_door_mqtt_gate.client = FakeMqttClient()
+    app = App(config, mqtt_client_factory=lambda _: FakeMqttClient())
+    app.door.position = door_position.CLOSED
 
     result = asyncio.run(app.door_controller.excecute_command(OPEN_DOOR_COMMAND))
 

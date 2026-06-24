@@ -1,11 +1,14 @@
 import asyncio
+from collections.abc import Callable
+
 from smart_home_bridge.composition import (
     CHICKEN_DOOR_TOPIC,
     CHICKEN_THREAD_DETECTOR_TOPIC,
     create_bridge_composition,
 )
-from smart_home_bridge.config import app_config, load_config
-from smart_home_bridge.infrastructure.mqtt.mqtt_gate import MqttGate
+from smart_home_bridge.config import MqttConfig, app_config, load_config
+from smart_home_bridge.infrastructure.mqtt.mqtt_client import MqttClient
+from smart_home_bridge.infrastructure.mqtt.mqtt_gate import MqttAdapter, MqttGate
 from smart_home_bridge.bridge_devices.chicken_door import (
     chicken_door_mqtt_callbacks,
 )
@@ -15,7 +18,11 @@ from smart_home_bridge.bridge_devices.chicken_thread_detector import (
 
 
 class App:
-    def __init__(self, config: app_config):
+    def __init__(
+        self,
+        config: app_config,
+        mqtt_client_factory: Callable[[MqttConfig], MqttAdapter] = MqttClient,
+    ):
         self.name = "LoxoneBridge" 
         self.config = config        
         
@@ -31,6 +38,7 @@ class App:
             config.mqtt,
             chicken_door_mqtt_callbacks(self.door_controller),
             CHICKEN_DOOR_TOPIC,
+            client=mqtt_client_factory(config.mqtt),
         )
         self.door_controller.set_publishable(self.chicken_door_mqtt_gate.publish)
 
@@ -38,6 +46,7 @@ class App:
             config.mqtt,
             chicken_thread_detector_mqtt_callbacks(self.thread_detector_controller),
             CHICKEN_THREAD_DETECTOR_TOPIC,
+            client=mqtt_client_factory(config.mqtt),
         )
         self.thread_detector_controller.set_publishable(self.chicken_thread_detector_mqtt_gate.publish)
         self.chicken_threat_pipeline = self.composition.create_chicken_threat_pipeline()

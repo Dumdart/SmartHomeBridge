@@ -1,14 +1,34 @@
 from collections.abc import Callable
+from typing import Protocol
 
 from smart_home_bridge.config import MqttConfig
 from smart_home_bridge.infrastructure.mqtt.mqtt_callbacks import mqtt_callbacks
 from smart_home_bridge.infrastructure.mqtt.mqtt_client import MqttClient
 
 
-class MqttGate:
-    def __init__(self, mqtt_config: MqttConfig, mqtt_callbacks: mqtt_callbacks, topic: str | None = None):
-        self.client = MqttClient(mqtt_config)
+class MqttAdapter(Protocol):
+    async def connect(self, on_connect: Callable | None = None): ...
 
+    async def disconnect(self, on_disconnect: Callable | None = None): ...
+
+    async def publish(self, topic, payload, on_publish: Callable | None = None): ...
+
+    async def subscribe(self, topic, on_subscribe: Callable | None = None): ...
+
+    async def unsubscribe(self, topic, on_unsubscribe: Callable | None = None): ...
+
+    def message_callback_add(self, topic, callback): ...
+
+
+class MqttGate:
+    def __init__(
+        self,
+        mqtt_config: MqttConfig,
+        mqtt_callbacks: mqtt_callbacks,
+        topic: str | None = None,
+        client: MqttAdapter | None = None,
+    ):
+        self.client = client if client is not None else MqttClient(mqtt_config)
         self.config = mqtt_config
         self.mqtt_callbacks = mqtt_callbacks
         self.topic = self._build_topic(mqtt_config.base_topic, topic)
@@ -37,4 +57,3 @@ class MqttGate:
             return base_topic
 
         return f"{base_topic.rstrip('/')}/{topic.strip('/')}"
-
