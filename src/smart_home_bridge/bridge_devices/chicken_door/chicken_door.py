@@ -1,7 +1,5 @@
-from dataclasses import dataclass
 from enum import Enum
 from smart_home_bridge.core.device import device
-from smart_home_bridge.infrastructure.api.http_gate import HttpGateInterface
 
 
 class door_position(str, Enum):
@@ -20,4 +18,15 @@ class chicken_door(device):
         return self.position
 
     def set_device_state(self, state):
-        self.position = state 
+        self.position = door_position(state)
+
+    def open(self) -> door_position:
+        self.position = door_position.OPEN
+        return self.position
+
+    def close(self) -> door_position:
+        self.position = door_position.CLOSED
+        return self.position
+
+    def stop(self) -> door_position:
+        return self.position

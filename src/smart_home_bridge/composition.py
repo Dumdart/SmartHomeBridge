@@ -53,7 +53,7 @@ class BridgeComposition:
 def create_bridge_composition(config: app_config) -> BridgeComposition:
     door = chicken_door(1, "door", door_position.UNKNOWN)
     http_gate = HttpGate(config.http)
-    controller = door_controller(door, http_gate)
+    controller = door_controller(door)
 
     model_config = default_model_config(config.chicken_threat.model_path)
     threat_detector = chicken_thread_detector(2, "chicken_thread_detector")

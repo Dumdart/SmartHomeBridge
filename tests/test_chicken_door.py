@@ -10,52 +10,100 @@ from smart_home_bridge.bridge_devices.chicken_door import (
 from smart_home_bridge.bridge_devices.chicken_door.chicken_door_message import (
     handle_chicken_door_mqtt_message,
 )
+from smart_home_bridge.bridge_devices.chicken_door.door_controller import (
+    CLOSE_DOOR_COMMAND,
+    GET_DOOR_STATE_COMMAND,
+    OPEN_DOOR_COMMAND,
+    STOP_DOOR_COMMAND,
+    close_door_command,
+    get_door_state_command,
+    open_door_command,
+    stop_door_command,
+)
 from smart_home_bridge.config import HttpConfig, MqttConfig, app_config, DoorApiConfig
-from smart_home_bridge.infrastructure.api.http_gate import HttpGateInterface
 
 
-class FakeHttpGate(HttpGateInterface):
-    def get(self, endpoint, params=None):
-        return None
-
-    def post(self, endpoint, data=None):
-        return None
-
-    def put(self, endpoint, data=None):
-        return None
-
-    def delete(self, endpoint):
-        return None
-
-
-def test_controller_executes_close_command():
-    door = chicken_door(1, "door", door_position.OPEN)
-    controller = door_controller(door, FakeHttpGate())
-
-    asyncio.run(controller.excecute_command("close_door"))
-
-    assert door.position == door_position.CLOSED
-
-
-def test_command_publishes_resulting_state_with_publishable_field():
+def test_open_command_updates_and_publishes_door_state():
     published_payloads = []
     door = chicken_door(1, "door", door_position.CLOSED)
 
     async def publishable(payload):
         published_payloads.append(payload)
 
-    controller = door_controller(door, FakeHttpGate(), publishable)
+    result = asyncio.run(open_door_command(door, publishable).excecute())
 
-    result = asyncio.run(controller.excecute_command("open_door"))
+    assert result.success is True
+    assert result.data == door_position.OPEN
+    assert door.position == door_position.OPEN
+    assert published_payloads == ["open"]
+
+
+def test_close_command_updates_and_publishes_door_state():
+    published_payloads = []
+    door = chicken_door(1, "door", door_position.OPEN)
+
+    async def publishable(payload):
+        published_payloads.append(payload)
+
+    result = asyncio.run(close_door_command(door, publishable).excecute())
+
+    assert result.success is True
+    assert result.data == door_position.CLOSED
+    assert door.position == door_position.CLOSED
+    assert published_payloads == ["closed"]
+
+
+def test_stop_command_preserves_and_publishes_current_state():
+    published_payloads = []
+    door = chicken_door(1, "door", door_position.UNKNOWN)
+
+    async def publishable(payload):
+        published_payloads.append(payload)
+
+    result = asyncio.run(stop_door_command(door, publishable).excecute())
+
+    assert result.success is True
+    assert result.data == door_position.UNKNOWN
+    assert door.position == door_position.UNKNOWN
+    assert published_payloads == ["unknown"]
+
+
+def test_get_state_command_publishes_current_state():
+    published_payloads = []
+    door = chicken_door(1, "door", door_position.OPEN)
+
+    async def publishable(payload):
+        published_payloads.append(payload)
+
+    result = asyncio.run(get_door_state_command(door, publishable).excecute())
 
     assert result.success is True
     assert result.data == door_position.OPEN
     assert published_payloads == ["open"]
 
 
+def test_controller_resolves_supported_door_commands():
+    door = chicken_door(1, "door", door_position.UNKNOWN)
+    controller = door_controller(door)
+
+    assert isinstance(controller.get_command(OPEN_DOOR_COMMAND), open_door_command)
+    assert isinstance(controller.get_command(CLOSE_DOOR_COMMAND), close_door_command)
+    assert isinstance(controller.get_command(STOP_DOOR_COMMAND), stop_door_command)
+    assert isinstance(controller.get_command(GET_DOOR_STATE_COMMAND), get_door_state_command)
+
+
+def test_controller_executes_close_command():
+    door = chicken_door(1, "door", door_position.OPEN)
+    controller = door_controller(door)
+
+    asyncio.run(controller.excecute_command(CLOSE_DOOR_COMMAND))
+
+    assert door.position == door_position.CLOSED
+
+
 def test_mqtt_callback_decodes_payload_and_executes_command():
     door = chicken_door(1, "door", door_position.CLOSED)
-    controller = door_controller(door, FakeHttpGate())
+    controller = door_controller(door)
     callbacks = chicken_door_mqtt_callbacks(controller)
     message = SimpleNamespace(topic="loxone/chicken-door", payload=b"open_door")
 
@@ -66,7 +114,7 @@ def test_mqtt_callback_decodes_payload_and_executes_command():
 
 def test_door_message_decodes_payload_and_executes_command():
     door = chicken_door(1, "door", door_position.CLOSED)
-    controller = door_controller(door, FakeHttpGate())
+    controller = door_controller(door)
 
     asyncio.run(
         handle_chicken_door_mqtt_message(
@@ -114,7 +162,7 @@ def test_application_wires_door_commands_to_mqtt_publish():
 
     app.chicken_door_mqtt_gate.client = FakeMqttClient()
 
-    result = asyncio.run(app.door_controller.excecute_command("open_door"))
+    result = asyncio.run(app.door_controller.excecute_command(OPEN_DOOR_COMMAND))
 
     assert result.success is True
     assert result.data == door_position.OPEN

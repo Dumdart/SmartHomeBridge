@@ -302,10 +302,10 @@ def test_application_wires_independent_camera_threat_pipeline():
     assert app.chicken_threat_pipeline.camera_client.config == config.camera
     assert app.chicken_threat_pipeline.poll_interval_seconds == 7
     assert app.thread_model_config.model_path == "/models/chicken_threat_detector_best.pt"
-    assert app.door_controller.http_gate is app.http_gate
+    assert app.http_gate is app.composition.http_gate
 
 
-def test_threat_pipeline_run_does_not_call_chicken_door_http_gate():
+def test_threat_pipeline_run_publishes_assessment():
     from smart_home_bridge.__main__ import App
 
     config = app_config(
@@ -329,21 +329,6 @@ def test_threat_pipeline_run_does_not_call_chicken_door_http_gate():
     app = App(config)
     published = []
 
-    class CountingDoorHttpGate:
-        calls = 0
-
-        def get(self, endpoint, params=None):
-            self.calls += 1
-
-        def post(self, endpoint, data=None):
-            self.calls += 1
-
-        def put(self, endpoint, data=None):
-            self.calls += 1
-
-        def delete(self, endpoint):
-            self.calls += 1
-
     class FakeCameraClient:
         def fetch_jpeg(self):
             return b"\xff\xd8frame"
@@ -363,8 +348,6 @@ def test_threat_pipeline_run_does_not_call_chicken_door_http_gate():
         async def publish(self, topic, payload, on_publish=None):
             published.append((topic, json.loads(payload)))
 
-    door_http_gate = CountingDoorHttpGate()
-    app.door_controller.http_gate = door_http_gate
     app.chicken_thread_detector_mqtt_gate.client = FakeMqttClient()
     app.chicken_threat_pipeline.camera_client = FakeCameraClient()
     app.chicken_threat_pipeline.inference_service = FakeInferenceService()
@@ -372,7 +355,6 @@ def test_threat_pipeline_run_does_not_call_chicken_door_http_gate():
     result = asyncio.run(app.chicken_threat_pipeline.run_once())
 
     assert result.success is True
-    assert door_http_gate.calls == 0
     assert published == [
         (
             "loxone/chicken-thread-detector",
