@@ -3,6 +3,7 @@ from io import BytesIO
 
 from smart_home_bridge.bridge_devices.chicken_thread_detector import (
     ChickenThreatInferenceService,
+    ChickenThreatScanService,
     chicken_thread_detector_controller,
 )
 from smart_home_bridge.infrastructure.camera import CameraClientInterface
@@ -25,25 +26,56 @@ class GuiThreatScanService:
         detector_controller: chicken_thread_detector_controller,
         source: str | None = None,
     ):
-        self.camera_client = camera_client
-        self.inference_service = inference_service
-        self.detector_controller = detector_controller
-        self.source = source
+        self.scan_service = ChickenThreatScanService(
+            camera_client=camera_client,
+            inference_service=inference_service,
+            detector_controller=detector_controller,
+            source=source,
+        )
+
+    @property
+    def camera_client(self) -> CameraClientInterface:
+        return self.scan_service.camera_client
+
+    @camera_client.setter
+    def camera_client(self, camera_client: CameraClientInterface):
+        self.scan_service.camera_client = camera_client
+
+    @property
+    def inference_service(self) -> ChickenThreatInferenceService:
+        return self.scan_service.inference_service
+
+    @inference_service.setter
+    def inference_service(self, inference_service: ChickenThreatInferenceService):
+        self.scan_service.inference_service = inference_service
+
+    @property
+    def detector_controller(self) -> chicken_thread_detector_controller:
+        return self.scan_service.detector_controller
+
+    @detector_controller.setter
+    def detector_controller(self, detector_controller: chicken_thread_detector_controller):
+        self.scan_service.detector_controller = detector_controller
+
+    @property
+    def source(self) -> str | None:
+        return self.scan_service.source
+
+    @source.setter
+    def source(self, source: str | None):
+        self.scan_service.source = source
 
     async def scan_once(self) -> GuiThreatScanResult:
-        image_bytes = self.camera_client.fetch_jpeg()
-        frame = self.inference_service.detect(image_bytes, source=self.source)
-        result = await self.detector_controller.score_frame(frame)
-        assessment = result.data
-
-        if not isinstance(assessment, DangerAssessment):
-            raise RuntimeError("Threat detector did not return a danger assessment.")
+        scan_result = await self.scan_service.scan_once()
 
         return GuiThreatScanResult(
-            image_bytes=image_bytes,
-            annotated_image_bytes=annotate_detection_jpeg(image_bytes, frame),
-            frame=frame,
-            assessment=assessment,
+            image_bytes=scan_result.image_bytes,
+            annotated_image_bytes=annotate_detection_jpeg(
+                scan_result.image_bytes,
+                scan_result.frame,
+            ),
+            frame=scan_result.frame,
+            assessment=scan_result.assessment,
         )
 
 

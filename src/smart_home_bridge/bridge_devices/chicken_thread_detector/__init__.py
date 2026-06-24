@@ -18,10 +18,16 @@ from smart_home_bridge.bridge_devices.chicken_thread_detector.model_config impor
 from smart_home_bridge.bridge_devices.chicken_thread_detector.pipeline import (
     ChickenThreatDetectionPipeline,
 )
+from smart_home_bridge.bridge_devices.chicken_thread_detector.scan import (
+    ChickenThreatScanResult,
+    ChickenThreatScanService,
+)
 
 __all__ = [
     "ChickenThreatDetectionPipeline",
     "ChickenThreatInferenceService",
+    "ChickenThreatScanResult",
+    "ChickenThreatScanService",
     "DangerScorer",
     "LocalChickenThreadDetector",
     "chicken_thread_detector",

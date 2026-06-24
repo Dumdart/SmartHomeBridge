@@ -4,7 +4,7 @@ from smart_home_bridge.bridge_devices.chicken_thread_detector import (
     ChickenThreatDetectionPipeline,
 )
 from smart_home_bridge.core.command import command_result
-from smart_home_bridge.models import DetectionFrame
+from smart_home_bridge.models import DangerAssessment, DetectionFrame, ThreatLevel
 
 
 class FakeCameraClient:
@@ -41,10 +41,16 @@ class FakeInferenceService:
 class FakeDetectorController:
     def __init__(self):
         self.frames = []
+        self.assessment = DangerAssessment(
+            level=ThreatLevel.NONE,
+            score=0,
+            triggering_detections=(),
+            detection_count=0,
+        )
 
     async def score_frame(self, frame):
         self.frames.append(frame)
-        return command_result(data=frame)
+        return command_result(data=self.assessment)
 
 
 def test_pipeline_fetches_infers_scores_and_publishes_assessment():

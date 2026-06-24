@@ -6,6 +6,7 @@ from smart_home_bridge.bridge_devices.chicken_thread_detector.chicken_thread_det
 from smart_home_bridge.bridge_devices.chicken_thread_detector.inference import (
     ChickenThreatInferenceService,
 )
+from smart_home_bridge.bridge_devices.chicken_thread_detector.scan import ChickenThreatScanService
 from smart_home_bridge.core.command import command_result
 from smart_home_bridge.infrastructure.camera import CameraClientInterface
 
@@ -19,17 +20,50 @@ class ChickenThreatDetectionPipeline:
         poll_interval_seconds: float,
         source: str | None = None,
     ):
-        self.camera_client = camera_client
-        self.inference_service = inference_service
-        self.detector_controller = detector_controller
+        self.scan_service = ChickenThreatScanService(
+            camera_client=camera_client,
+            inference_service=inference_service,
+            detector_controller=detector_controller,
+            source=source,
+        )
         self.poll_interval_seconds = poll_interval_seconds
-        self.source = source
         self._task: asyncio.Task | None = None
 
+    @property
+    def camera_client(self) -> CameraClientInterface:
+        return self.scan_service.camera_client
+
+    @camera_client.setter
+    def camera_client(self, camera_client: CameraClientInterface):
+        self.scan_service.camera_client = camera_client
+
+    @property
+    def inference_service(self) -> ChickenThreatInferenceService:
+        return self.scan_service.inference_service
+
+    @inference_service.setter
+    def inference_service(self, inference_service: ChickenThreatInferenceService):
+        self.scan_service.inference_service = inference_service
+
+    @property
+    def detector_controller(self) -> chicken_thread_detector_controller:
+        return self.scan_service.detector_controller
+
+    @detector_controller.setter
+    def detector_controller(self, detector_controller: chicken_thread_detector_controller):
+        self.scan_service.detector_controller = detector_controller
+
+    @property
+    def source(self) -> str | None:
+        return self.scan_service.source
+
+    @source.setter
+    def source(self, source: str | None):
+        self.scan_service.source = source
+
     async def run_once(self) -> command_result:
-        image_bytes = await asyncio.to_thread(self.camera_client.fetch_jpeg)
-        frame = await asyncio.to_thread(self.inference_service.detect, image_bytes, self.source)
-        return await self.detector_controller.score_frame(frame)
+        scan_result = await self.scan_service.scan_once()
+        return scan_result.score_result
 
     async def start(self):
         if self._task is not None and not self._task.done():
