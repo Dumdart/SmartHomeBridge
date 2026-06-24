@@ -1,5 +1,6 @@
 import asyncio
 
+from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QFormLayout,
@@ -34,10 +35,21 @@ class MainWindow(QMainWindow):
         self.state_value.setObjectName("doorStateValue")
 
         self.mqtt_topic_value = QLabel(self.context.command_topic)
+        self.detector_topic_value = QLabel(self.context.detector_topic)
         self.http_endpoint_value = QLabel(self._http_endpoint())
+        self.camera_endpoint_value = QLabel(self._camera_endpoint())
+        self.threat_level_value = QLabel(self.context.threat_detector.assessment.level.value)
+        self.threat_score_value = QLabel(f"{self.context.threat_detector.assessment.score:.4f}")
+        self.threat_count_value = QLabel(
+            str(self.context.threat_detector.assessment.detection_count)
+        )
         self.status_value = QLabel("Ready")
         self.log_output = QTextEdit()
         self.log_output.setReadOnly(True)
+        self.inference_image_label = QLabel("No inferred frame")
+        self.inference_image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.inference_image_label.setMinimumSize(360, 220)
+        self.inference_image_label.setScaledContents(True)
 
         self.mqtt_host_input = QLineEdit()
         self.mqtt_port_input = QSpinBox()
@@ -61,6 +73,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self._build_status_group())
         layout.addWidget(self._build_settings_group())
         layout.addWidget(self._build_command_group())
+        layout.addWidget(self._build_detector_group())
         layout.addWidget(self._build_log_group())
 
         self.setCentralWidget(root)
@@ -73,10 +86,20 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.state_value, 0, 1)
         layout.addWidget(QLabel("MQTT topic"), 1, 0)
         layout.addWidget(self.mqtt_topic_value, 1, 1)
-        layout.addWidget(QLabel("HTTP diagnostics"), 2, 0)
-        layout.addWidget(self.http_endpoint_value, 2, 1)
-        layout.addWidget(QLabel("Status"), 3, 0)
-        layout.addWidget(self.status_value, 3, 1)
+        layout.addWidget(QLabel("Detector topic"), 2, 0)
+        layout.addWidget(self.detector_topic_value, 2, 1)
+        layout.addWidget(QLabel("HTTP diagnostics"), 3, 0)
+        layout.addWidget(self.http_endpoint_value, 3, 1)
+        layout.addWidget(QLabel("Camera endpoint"), 4, 0)
+        layout.addWidget(self.camera_endpoint_value, 4, 1)
+        layout.addWidget(QLabel("Detector level"), 5, 0)
+        layout.addWidget(self.threat_level_value, 5, 1)
+        layout.addWidget(QLabel("Detector score"), 6, 0)
+        layout.addWidget(self.threat_score_value, 6, 1)
+        layout.addWidget(QLabel("Detector count"), 7, 0)
+        layout.addWidget(self.threat_count_value, 7, 1)
+        layout.addWidget(QLabel("Status"), 8, 0)
+        layout.addWidget(self.status_value, 8, 1)
 
         return group
 
@@ -118,6 +141,20 @@ class MainWindow(QMainWindow):
 
         return group
 
+    def _build_detector_group(self) -> QGroupBox:
+        group = QGroupBox("Chicken Threat Detector")
+        layout = QVBoxLayout(group)
+
+        button_row = QHBoxLayout()
+        scan_button = QPushButton("Run Inference")
+        scan_button.clicked.connect(self._run_threat_scan)
+        button_row.addWidget(scan_button)
+        button_row.addStretch(1)
+
+        layout.addLayout(button_row)
+        layout.addWidget(self.inference_image_label)
+        return group
+
     def _build_log_group(self) -> QGroupBox:
         group = QGroupBox("Activity")
         layout = QVBoxLayout(group)
@@ -144,6 +181,34 @@ class MainWindow(QMainWindow):
         self._append_log(
             f"{command_name} completed with state {self.context.door.position.value}."
         )
+
+    def _run_threat_scan(self):
+        self.status_value.setText("Running threat inference")
+
+        try:
+            result = asyncio.run(self.context.threat_scan_service.scan_once())
+        except Exception as exc:
+            self.status_value.setText("Inference failed")
+            self._append_log(f"Threat inference failed: {exc}")
+            return
+
+        self._refresh_threat_labels()
+        self._render_inference_image(result.annotated_image_bytes)
+        self.status_value.setText("Ready")
+        self._append_log(
+            "Threat inference completed with "
+            f"{result.assessment.level.value} risk "
+            f"from {result.assessment.detection_count} detections."
+        )
+
+    def _render_inference_image(self, image_bytes: bytes):
+        pixmap = QPixmap()
+        if not pixmap.loadFromData(image_bytes):
+            self.inference_image_label.setText("Could not render inferred frame")
+            self.inference_image_label.setPixmap(QPixmap())
+            return
+
+        self.inference_image_label.setPixmap(pixmap)
 
     def _append_log(self, message: str):
         entry = self.context.activity_log.record(message)
@@ -181,8 +246,10 @@ class MainWindow(QMainWindow):
             return
 
         previous_state = self.context.door.position
+        previous_assessment = self.context.threat_detector.assessment
         self.context = create_gui_bridge_context(config, self.context.env_settings)
         self.context.door.position = previous_state
+        self.context.threat_detector.assessment = previous_assessment
         self._refresh_status_labels()
 
         self.status_value.setText("Ready")
@@ -191,7 +258,20 @@ class MainWindow(QMainWindow):
     def _refresh_status_labels(self):
         self.state_value.setText(self.context.door.position.value)
         self.mqtt_topic_value.setText(self.context.command_topic)
+        self.detector_topic_value.setText(self.context.detector_topic)
         self.http_endpoint_value.setText(self._http_endpoint())
+        self.camera_endpoint_value.setText(self._camera_endpoint())
+        self._refresh_threat_labels()
+
+    def _refresh_threat_labels(self):
+        assessment = self.context.threat_detector.assessment
+        self.threat_level_value.setText(assessment.level.value)
+        self.threat_score_value.setText(f"{assessment.score:.4f}")
+        self.threat_count_value.setText(str(assessment.detection_count))
 
     def _http_endpoint(self) -> str:
         return f"{self.context.config.http.host}:{self.context.config.http.port}"
+
+    def _camera_endpoint(self) -> str:
+        config = self.context.config.camera
+        return f"{config.host}:{config.port}{config.jpg_endpoint}"

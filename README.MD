@@ -53,6 +53,8 @@ is available through the `smart-home-bridge-gui` console script after installing
 The GUI provides:
 
 * Bridge status, including current door state, command MQTT topic, and HTTP diagnostics endpoint
+* Chicken threat detector status, MQTT topic, camera endpoint, risk level, score, and detection count
+* Manual threat inference that fetches the configured ESP32-CAM JPEG and renders detected objects with labeled borders
 * Environment Settings for MQTT host, port, username, password, base topic, HTTP host, and HTTP port
 * Save Environment support that writes MQTT and HTTP updates to `.env`
 * Chicken door controls for open, close, stop, and refresh
@@ -118,6 +120,12 @@ Docker image:
 pip install -e ".[gui]"
 ```
 
+For backend-only local threat inference without the desktop GUI, install:
+
+```bash
+pip install -e ".[inference]"
+```
+
 3. Run the backend from the repository root:
 
 ```bash
@@ -131,9 +139,10 @@ smart-home-bridge-gui
 ```
 
 Use the GUI to inspect bridge status, trigger chicken door commands, review
-activity output, and edit MQTT/HTTP environment settings. Save Environment
-writes those values to `.env`; restart any already-running backend service for
-that process to pick up the changed environment.
+activity output, run one-off chicken threat inference, review the annotated
+camera frame, and edit MQTT/HTTP environment settings. Save Environment writes
+those values to `.env`; restart any already-running backend service for that
+process to pick up the changed environment.
 
 4. Run tests:
 
