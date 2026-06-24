@@ -2,13 +2,13 @@
 
 ## Project Structure & Module Organization
 
-This Python package uses a `src` layout. Runtime code lives under `src/loxone_bridge/`.
+This Python package uses a `src` layout. Runtime code lives under `src/smart_home_bridge/`.
 
-- `src/loxone_bridge/core/`: domain concepts such as devices, commands, and controllers.
-- `src/loxone_bridge/bridge_devices/chicken_door/`: chicken door device model, controller, and MQTT callbacks.
-- `src/loxone_bridge/infrastructure/api/`: HTTP gateway code for vendor or diagnostic APIs.
-- `src/loxone_bridge/infrastructure/mqtt/`: MQTT client, gate, and callback integration.
-- `src/loxone_bridge/config.py`: environment-backed configuration.
+- `src/smart_home_bridge/core/`: domain concepts such as devices, commands, and controllers.
+- `src/smart_home_bridge/bridge_devices/chicken_door/`: chicken door device model, controller, and MQTT callbacks.
+- `src/smart_home_bridge/infrastructure/api/`: HTTP gateway code for vendor or diagnostic APIs.
+- `src/smart_home_bridge/infrastructure/mqtt/`: MQTT client, gate, and callback integration.
+- `src/smart_home_bridge/config.py`: environment-backed configuration.
 - `tests/`: pytest tests by module or feature.
 - `Dockerfile` and `docker-compose.yml`: containerized local/runtime deployment.
 
@@ -17,10 +17,10 @@ Do not commit generated artifacts such as `__pycache__/`, `.pytest_cache/`, or b
 ## Build, Test, and Development Commands
 
 - `pip install -e ".[dev]"`: install the package in editable mode with pytest.
-- `loxone-bridge`: run the configured application entry point.
+- `smart-home-bridge`: run the configured application entry point.
 - `pytest`: run the full test suite.
 - `docker compose up -d`: start the service using values from `.env`.
-- `docker build -t loxone-bridge:local .`: build the image directly.
+- `docker build -t smart-home-bridge:local .`: build the image directly.
 
 Copy `.env.example` to `.env` before local runtime testing and set MQTT/HTTP values for your environment.
 

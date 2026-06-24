@@ -48,7 +48,7 @@ class app_config:
     mqtt: MqttConfig
     http: HttpConfig
     log_level: str
-    log_file_path: str = "logs/loxone-bridge.log"
+    log_file_path: str = "logs/smart-home-bridge.log"
     camera: CameraConfig = field(default_factory=CameraConfig)
     chicken_threat: ChickenThreatConfig = field(default_factory=ChickenThreatConfig)
 
@@ -74,7 +74,7 @@ def load_config(dotenv_path: str | None = None, override: bool = False) -> app_c
             port=_int("HTTP_PORT", 8080),
         ),
         log_level=_get("LOG_LEVEL", "INFO"),
-        log_file_path=_get("LOG_FILE_PATH", "logs/loxone-bridge.log"),
+        log_file_path=_get("LOG_FILE_PATH", "logs/smart-home-bridge.log"),
         camera=CameraConfig(
             host=_get("CAMERA_HOST", "192.168.1.42"),
             port=_int("CAMERA_PORT", 80),

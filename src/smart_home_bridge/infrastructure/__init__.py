@@ -1,1 +1,1 @@
-"""Infrastructure adapters for Loxone Bridge."""
+"""Infrastructure adapters for Smart Home Bridge."""

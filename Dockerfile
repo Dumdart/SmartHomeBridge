@@ -12,4 +12,4 @@ RUN pip install --no-cache-dir .
 
 USER 65532:65532
 
-CMD ["loxone-bridge"]
+CMD ["smart-home-bridge"]

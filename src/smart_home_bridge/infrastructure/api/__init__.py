@@ -1,1 +1,1 @@
-"""API and HTTP infrastructure for Loxone Bridge."""
+"""API and HTTP infrastructure for Smart Home Bridge."""

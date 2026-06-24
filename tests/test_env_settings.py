@@ -28,7 +28,7 @@ def test_env_settings_saves_mqtt_and_http_config(tmp_path):
         mqtt=MqttConfig(
             host="mqtt.local",
             port=8883,
-            username="loxone_bridge",
+            username="smart_home_bridge",
             password="new-password",
             base_topic="barn/chicken-door",
         ),

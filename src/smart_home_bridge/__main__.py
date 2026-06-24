@@ -23,7 +23,7 @@ class App:
         config: app_config,
         mqtt_client_factory: Callable[[MqttConfig], MqttAdapter] = MqttClient,
     ):
-        self.name = "LoxoneBridge" 
+        self.name = "SmartHomeBridge"
         self.config = config        
         
         self.composition = create_bridge_composition(config)

@@ -6,7 +6,7 @@ This project provides a configurable bridge between those devices and MQTT. Smar
 
 Smart Home Bridge can run from the console, from the optional local desktop GUI, or inside Docker. Custom devices can be defined and wired into the same bridge pattern.
 
-## Architecture on Loxone
+## Example Architecture: Loxone
 
 ```text
 Loxone App
@@ -58,11 +58,11 @@ The GUI provides:
 * Environment Settings for MQTT host, port, username, password, base topic, HTTP host, and HTTP port
 * Save Environment support that writes MQTT and HTTP updates to `.env`
 * Chicken door controls for open, close, stop, and refresh
-* Activity logging in the window and in `LOG_FILE_PATH`, defaulting to `logs/loxone-bridge.log`
+* Activity logging in the window and in `LOG_FILE_PATH`, defaulting to `logs/smart-home-bridge.log`
 
 ### MQTT Broker
 
-* Provide the local message bus between the backend and Loxone
+* Provide the local message bus between the backend and the smart home system
 * Recommended: Mosquitto
 * Run on the same LAN as the Miniserver
 * Use authentication and restricted ACLs
@@ -158,13 +158,13 @@ docker compose up -d
 
 Docker runs only the bridge service logic. The Dockerfile installs the base
 package without the optional PySide6 GUI dependencies, and the container command
-is `loxone-bridge`. Start the GUI locally with `smart-home-bridge-gui` when you need
+is `smart-home-bridge`. Start the GUI locally with `smart-home-bridge-gui` when you need
 desktop controls or diagnostics.
 
 Build the image directly:
 
 ```bash
-docker build -t loxone-bridge:local .
+docker build -t smart-home-bridge:local .
 ```
 
 The compose service reads runtime settings from `.env`. Set `MQTT_HOST`,
@@ -173,7 +173,7 @@ smart home system can reach.
 
 The desktop GUI writes the same activity messages shown in the Activity panel
 to `LOG_FILE_PATH`. If the variable is not set, logs are appended to
-`logs/loxone-bridge.log`.
+`logs/smart-home-bridge.log`.
 
 ## Safety Requirements
 

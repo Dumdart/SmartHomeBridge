@@ -1,10 +1,10 @@
 services:
-  loxone-bridge:
+  smart-home-bridge:
     build:
       context: .
-    image: loxone-bridge:local
-    container_name: loxone-bridge
-    command: ["loxone-bridge"]
+    image: smart-home-bridge:local
+    container_name: smart-home-bridge
+    command: ["smart-home-bridge"]
     env_file:
       - .env
     restart: unless-stopped

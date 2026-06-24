@@ -1,1 +1,1 @@
-"""Loxone Bridge package."""
+"""Smart Home Bridge package."""

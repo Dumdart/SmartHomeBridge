@@ -1,1 +1,1 @@
-"""MQTT infrastructure for Loxone Bridge."""
+"""MQTT infrastructure for Smart Home Bridge."""

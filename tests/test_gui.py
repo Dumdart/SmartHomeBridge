@@ -62,7 +62,7 @@ def test_gui_context_wires_chicken_door_controller():
     assert context.door.position == door_position.UNKNOWN
     assert context.door_controller.device is context.door
     assert context.command_topic == "loxone/chicken-door"
-    assert context.activity_log.log_file_path == Path("logs/loxone-bridge.log")
+    assert context.activity_log.log_file_path == Path("logs/smart-home-bridge.log")
 
 
 def test_gui_context_wires_chicken_threat_detector():

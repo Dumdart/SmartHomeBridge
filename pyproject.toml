@@ -3,9 +3,9 @@ requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "loxone-bridge"
+name = "smart-home-bridge"
 version = "0.1.0"
-description = "A bridge for connecting Loxone to other systems"
+description = "A bridge for connecting smart home systems to device integrations"
 requires-python = ">=3.11"
 dependencies = [
     "paho-mqtt",
@@ -26,8 +26,7 @@ inference = [
 ]
 
 [project.scripts]
-loxone-bridge = "smart_home_bridge.__main__:run"
-loxone-bridge-gui = "smart_home_bridge.gui:run"
+smart-home-bridge = "smart_home_bridge.__main__:run"
 smart-home-bridge-gui = "smart_home_bridge.gui:run"
 
 [tool.setuptools.packages.find]
