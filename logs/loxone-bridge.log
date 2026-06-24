@@ -1,1 +1,49 @@
 [2026-06-24 10:46:56] GUI started.
+[2026-06-24 11:17:15] GUI started.
+[2026-06-24 11:20:16] open_door completed with state unknown.
+[2026-06-24 11:20:18] open_door completed with state unknown.
+[2026-06-24 11:20:19] close_door completed with state unknown.
+[2026-06-24 11:20:21] stop_door completed with state unknown.
+[2026-06-24 11:20:23] get_door_state completed with state unknown.
+[2026-06-24 11:20:24] close_door completed with state unknown.
+[2026-06-24 11:20:25] open_door completed with state unknown.
+[2026-06-24 11:20:26] close_door completed with state unknown.
+[2026-06-24 11:20:26] open_door completed with state unknown.
+[2026-06-24 11:20:27] close_door completed with state unknown.
+[2026-06-24 11:20:27] open_door completed with state unknown.
+[2026-06-24 11:20:28] close_door completed with state unknown.
+[2026-06-24 11:20:38] get_door_state completed with state unknown.
+[2026-06-24 11:21:02] Threat inference failed: [Errno 2] No such file or directory: 'src\\smart_home_bridge\\models\\chicken_threat_detector_best.pt'
+[2026-06-24 11:21:56] GUI started.
+[2026-06-24 11:22:05] Threat inference completed with none risk from 0 detections.
+[2026-06-24 11:22:09] Threat inference completed with none risk from 0 detections.
+[2026-06-24 11:22:12] Threat inference completed with none risk from 0 detections.
+[2026-06-24 11:22:14] Threat inference completed with none risk from 0 detections.
+[2026-06-24 11:22:15] Threat inference completed with none risk from 0 detections.
+[2026-06-24 11:22:47] Threat inference completed with none risk from 0 detections.
+[2026-06-24 11:22:48] Threat inference completed with none risk from 0 detections.
+[2026-06-24 11:22:51] Threat inference completed with none risk from 0 detections.
+[2026-06-24 11:22:52] Threat inference completed with none risk from 1 detections.
+[2026-06-24 11:22:53] Threat inference completed with none risk from 1 detections.
+[2026-06-24 11:23:54] Threat inference completed with none risk from 1 detections.
+[2026-06-24 11:24:18] Threat inference completed with none risk from 0 detections.
+[2026-06-24 11:24:42] Threat inference completed with none risk from 0 detections.
+[2026-06-24 11:24:43] Threat inference completed with none risk from 0 detections.
+[2026-06-24 11:24:44] Threat inference completed with none risk from 0 detections.
+[2026-06-24 11:24:45] Threat inference completed with none risk from 0 detections.
+[2026-06-24 11:24:47] Threat inference completed with none risk from 0 detections.
+[2026-06-24 11:34:57] GUI started.
+[2026-06-24 11:35:28] Threat inference completed with none risk from 1 detections.
+[2026-06-24 11:35:29] Threat inference completed with none risk from 0 detections.
+[2026-06-24 11:35:32] Threat inference completed with none risk from 0 detections.
+[2026-06-24 11:35:34] Threat inference completed with none risk from 0 detections.
+[2026-06-24 11:35:35] Threat inference completed with none risk from 0 detections.
+[2026-06-24 11:35:38] Threat inference completed with none risk from 1 detections.
+[2026-06-24 11:36:03] Threat inference completed with none risk from 0 detections.
+[2026-06-24 11:36:06] Threat inference completed with none risk from 0 detections.
+[2026-06-24 11:36:07] Threat inference completed with none risk from 0 detections.
+[2026-06-24 11:36:08] Threat inference completed with none risk from 0 detections.
+[2026-06-24 11:36:09] Threat inference completed with none risk from 0 detections.
+[2026-06-24 11:36:11] Threat inference completed with none risk from 0 detections.
+[2026-06-24 11:36:13] Threat inference completed with none risk from 0 detections.
+[2026-06-24 11:36:14] Threat inference completed with none risk from 0 detections.

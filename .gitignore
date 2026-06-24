@@ -31,3 +31,4 @@ src/firmware/esp32cam_extention/include/secrets.h
 
 # Logs
 logs/
+logs/loxone-bridge.log
