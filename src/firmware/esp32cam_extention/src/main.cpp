@@ -44,12 +44,17 @@
 #define CAMERA_WARMUP_FRAME_COUNT 6
 #endif
 
+#ifndef CAMERA_HTTP_PORT
+#define CAMERA_HTTP_PORT 80
+#endif
+
 constexpr uint32_t serial_baud = 115200;
 constexpr int8_t serial_rx_pin = 3;
 constexpr int8_t serial_tx_pin = 1;
 constexpr uint32_t wifi_connect_timeout_ms = 30000;
 constexpr uint32_t serial_heartbeat_interval_ms = 5000;
-constexpr uint16_t http_port = 80;
+static_assert(CAMERA_HTTP_PORT > 0 && CAMERA_HTTP_PORT <= 65535, "CAMERA_HTTP_PORT must be 1-65535");
+constexpr uint16_t http_port = CAMERA_HTTP_PORT;
 
 WebServer server(http_port);
 
@@ -274,11 +279,19 @@ void connect_wifi()
     return;
   }
 
+  String camera_url = String("http://") + WiFi.localIP().toString();
+  if (http_port != 80)
+  {
+    camera_url += ":";
+    camera_url += String(http_port);
+  }
+  camera_url += "/jpg";
+
   serial_printf(
-      "Wi-Fi connected. ip=%s rssi_dbm=%ld Camera API: http://%s/jpg\n",
+      "Wi-Fi connected. ip=%s rssi_dbm=%ld Camera API: %s\n",
       WiFi.localIP().toString().c_str(),
       static_cast<long>(WiFi.RSSI()),
-      WiFi.localIP().toString().c_str());
+      camera_url.c_str());
 }
 
 void configure_routes()
