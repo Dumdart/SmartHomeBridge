@@ -32,7 +32,9 @@ RISK_BY_LABEL = {
 }
 
 
-def default_model_config(model_path: str = "models/chicken_thread_detector/yolo11s.pt") -> ChickenThreadModelConfig:
+def default_model_config(
+    model_path: str = "src/smart_home_bridge/models/chicken_threat_detector_best.pt",
+) -> ChickenThreadModelConfig:
     return ChickenThreadModelConfig(
         model_path=model_path,
         class_names=MODEL_CLASS_NAMES,

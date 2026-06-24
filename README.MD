@@ -65,6 +65,41 @@ The GUI provides:
 * Run on the same LAN as the Miniserver
 * Use authentication and restricted ACLs
 
+### Chicken Threat Detector
+
+The chicken threat detector can run as an independent backend pipeline:
+
+```text
+ESP32-CAM /jpg
+   -> backend camera client fetches JPEG bytes
+   -> local YOLO inference with chicken_threat_detector_best.pt
+   -> danger scoring
+   -> MQTT detector assessment publish
+```
+
+This pipeline is separate from the chicken door controller. It does not call
+door commands, inspect door state, or reuse the door HTTP API configuration.
+The existing detector MQTT payload path remains available for manual or test
+injection of precomputed detections.
+
+Configure the detector with:
+
+* `CAMERA_HOST`: ESP32-CAM host or IP address
+* `CAMERA_PORT`: ESP32-CAM HTTP port, usually `80`
+* `CAMERA_JPG_ENDPOINT`: JPEG endpoint, usually `/jpg`
+* `CAMERA_HEALTH_ENDPOINT`: optional health endpoint, usually `/health`
+* `CAMERA_TIMEOUT_SECONDS`: camera request timeout
+* `CHICKEN_THREAT_ENABLED`: set to `true` to start backend polling
+* `CHICKEN_THREAT_MODEL_PATH`: local YOLO model path
+* `CHICKEN_THREAT_POLL_INTERVAL_SECONDS`: seconds between camera frames
+
+Detector assessments are published on the detector MQTT topic, for example
+`barn/chicken-door/chicken-thread-detector`, as JSON:
+
+```json
+{"level":"medium","score":0.675,"detection_count":1,"triggering_detections":[{"label":"dog","confidence":0.9,"box":null}]}
+```
+
 ## Development
 
 1. Configure environment variables in `.env` or set them directly in the shell. See `.env.example` for the available settings.
