@@ -1,4 +1,4 @@
-"""Desktop GUI entry point for loxone_bridge."""
+"""Desktop GUI entry point for smart_home_bridge."""
 
 from smart_home_bridge.gui.runner import run
 

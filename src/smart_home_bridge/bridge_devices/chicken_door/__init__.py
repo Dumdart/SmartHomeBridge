@@ -1,4 +1,4 @@
-"""Implementations for chickendoor of loxone_bridge."""
+"""Implementations for chickendoor of smart_home_bridge."""
 
 from smart_home_bridge.bridge_devices.chicken_door.chicken_door import (
     chicken_door,

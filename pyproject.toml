@@ -22,8 +22,9 @@ gui = [
 ]
 
 [project.scripts]
-loxone-bridge = "loxone_bridge.__main__:run"
-loxone-bridge-gui = "loxone_bridge.gui:run"
+loxone-bridge = "smart_home_bridge.__main__:run"
+loxone-bridge-gui = "smart_home_bridge.gui:run"
+smart-home-bridge-gui = "smart_home_bridge.gui:run"
 
 [tool.setuptools.packages.find]
 where = ["src"]

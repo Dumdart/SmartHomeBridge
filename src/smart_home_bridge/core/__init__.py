@@ -1,4 +1,4 @@
-"""Core objects for loxone_bridge."""
+"""Core objects for smart_home_bridge."""
 
 from smart_home_bridge.core.command import command
 from smart_home_bridge.core.device import device

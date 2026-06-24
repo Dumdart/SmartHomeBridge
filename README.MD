@@ -47,7 +47,7 @@ The Loxone App is not integrated directly with the device vendor API. Instead, t
 ### Local Desktop GUI
 
 The optional PySide6 GUI is intended for local startup and diagnostics only. It
-is available through the `loxone-bridge-gui` console script after installing the
+is available through the `smart-home-bridge-gui` console script after installing the
 `gui` extra, and is not installed or started by the Docker image.
 
 The GUI provides:
@@ -121,13 +121,13 @@ pip install -e ".[gui]"
 3. Run the backend from the repository root:
 
 ```bash
-python .\src\loxone_bridge\__main__.py
+python .\src\smart_home_bridge\__main__.py
 ```
 
 Run the PySide6 GUI locally:
 
 ```bash
-loxone-bridge-gui
+smart-home-bridge-gui
 ```
 
 Use the GUI to inspect bridge status, trigger chicken door commands, review
@@ -149,7 +149,7 @@ docker compose up -d
 
 Docker runs only the bridge service logic. The Dockerfile installs the base
 package without the optional PySide6 GUI dependencies, and the container command
-is `loxone-bridge`. Start the GUI locally with `loxone-bridge-gui` when you need
+is `loxone-bridge`. Start the GUI locally with `smart-home-bridge-gui` when you need
 desktop controls or diagnostics.
 
 Build the image directly:
