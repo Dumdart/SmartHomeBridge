@@ -25,7 +25,23 @@
 #endif
 
 #ifndef CAMERA_JPEG_QUALITY
-#define CAMERA_JPEG_QUALITY 12
+#define CAMERA_JPEG_QUALITY 10
+#endif
+
+#ifndef CAMERA_XCLK_FREQ_HZ
+#define CAMERA_XCLK_FREQ_HZ 10000000
+#endif
+
+#ifndef CAMERA_GAIN_CEILING
+#define CAMERA_GAIN_CEILING GAINCEILING_32X
+#endif
+
+#ifndef CAMERA_SETTLE_DELAY_MS
+#define CAMERA_SETTLE_DELAY_MS 1500
+#endif
+
+#ifndef CAMERA_WARMUP_FRAME_COUNT
+#define CAMERA_WARMUP_FRAME_COUNT 6
 #endif
 
 constexpr uint32_t serial_baud = 115200;
@@ -41,12 +57,14 @@ bool camera_ready = false;
 uint32_t failed_capture_count = 0;
 uint32_t last_serial_heartbeat_ms = 0;
 
-void serial_println(const char *message) {
+void serial_println(const char *message)
+{
   Serial.println(message);
   Serial.flush();
 }
 
-void serial_printf(const char *format, ...) {
+void serial_printf(const char *format, ...)
+{
   char buffer[192];
   va_list args;
   va_start(args, format);
@@ -57,7 +75,8 @@ void serial_printf(const char *format, ...) {
   Serial.flush();
 }
 
-camera_config_t camera_config() {
+camera_config_t camera_config()
+{
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
   config.ledc_timer = LEDC_TIMER_0;
@@ -77,7 +96,7 @@ camera_config_t camera_config() {
   config.pin_sccb_scl = 27;
   config.pin_pwdn = 32;
   config.pin_reset = -1;
-  config.xclk_freq_hz = 20000000;
+  config.xclk_freq_hz = CAMERA_XCLK_FREQ_HZ;
   config.pixel_format = PIXFORMAT_JPEG;
   config.frame_size = CAMERA_FRAME_SIZE;
   config.jpeg_quality = CAMERA_JPEG_QUALITY;
@@ -88,15 +107,71 @@ camera_config_t camera_config() {
   return config;
 }
 
-void send_text(int status_code, const String &body) {
+bool configure_camera_sensor()
+{
+  sensor_t *sensor = esp_camera_sensor_get();
+  if (sensor == nullptr)
+  {
+    return false;
+  }
+
+  sensor->set_framesize(sensor, CAMERA_FRAME_SIZE);
+  sensor->set_quality(sensor, CAMERA_JPEG_QUALITY);
+
+  sensor->set_brightness(sensor, 1);
+  sensor->set_contrast(sensor, 1);
+  sensor->set_saturation(sensor, 0);
+
+  sensor->set_whitebal(sensor, 1);
+  sensor->set_awb_gain(sensor, 1);
+  sensor->set_wb_mode(sensor, 0);
+
+  sensor->set_exposure_ctrl(sensor, 1);
+  sensor->set_aec2(sensor, 1);
+  sensor->set_ae_level(sensor, 2);
+
+  sensor->set_gain_ctrl(sensor, 1);
+  sensor->set_gainceiling(sensor, CAMERA_GAIN_CEILING);
+
+  sensor->set_bpc(sensor, 1);
+  sensor->set_wpc(sensor, 1);
+  sensor->set_raw_gma(sensor, 1);
+  sensor->set_lenc(sensor, 1);
+
+  return true;
+}
+
+void warmup_camera_sensor()
+{
+  delay(CAMERA_SETTLE_DELAY_MS);
+
+  for (uint8_t frame_index = 0; frame_index < CAMERA_WARMUP_FRAME_COUNT; frame_index++)
+  {
+    camera_fb_t *frame = esp_camera_fb_get();
+    if (frame == nullptr)
+    {
+      failed_capture_count++;
+      delay(200);
+      continue;
+    }
+
+    esp_camera_fb_return(frame);
+    delay(200);
+  }
+}
+
+void send_text(int status_code, const String &body)
+{
   server.send(status_code, "text/plain; charset=utf-8", body);
 }
 
-void handle_root() {
+void handle_root()
+{
   send_text(200, "ESP32-CAM chicken barn camera. Use GET /jpg for the latest JPEG frame.\n");
 }
 
-void handle_health() {
+void handle_health()
+{
   const String ip = WiFi.localIP().toString();
   const String payload =
       String("{\"status\":\"ok\",\"camera_ready\":") + (camera_ready ? "true" : "false") +
@@ -107,14 +182,17 @@ void handle_health() {
   server.send(camera_ready && WiFi.isConnected() ? 200 : 503, "application/json", payload);
 }
 
-void handle_jpg() {
-  if (!camera_ready) {
+void handle_jpg()
+{
+  if (!camera_ready)
+  {
     send_text(503, "camera not ready\n");
     return;
   }
 
   camera_fb_t *frame = esp_camera_fb_get();
-  if (frame == nullptr) {
+  if (frame == nullptr)
+  {
     failed_capture_count++;
     send_text(503, "camera capture failed\n");
     return;
@@ -129,37 +207,43 @@ void handle_jpg() {
   esp_camera_fb_return(frame);
 }
 
-void handle_not_found() {
+void handle_not_found()
+{
   send_text(404, "not found\n");
 }
 
-bool has_wifi_credentials() {
+bool has_wifi_credentials()
+{
   return strlen(WIFI_SSID) > 0;
 }
 
-const char *wifi_status_text(wl_status_t status) {
-  switch (status) {
-    case WL_IDLE_STATUS:
-      return "idle";
-    case WL_NO_SSID_AVAIL:
-      return "ssid_not_available";
-    case WL_SCAN_COMPLETED:
-      return "scan_completed";
-    case WL_CONNECTED:
-      return "connected";
-    case WL_CONNECT_FAILED:
-      return "connect_failed";
-    case WL_CONNECTION_LOST:
-      return "connection_lost";
-    case WL_DISCONNECTED:
-      return "disconnected";
-    default:
-      return "unknown";
+const char *wifi_status_text(wl_status_t status)
+{
+  switch (status)
+  {
+  case WL_IDLE_STATUS:
+    return "idle";
+  case WL_NO_SSID_AVAIL:
+    return "ssid_not_available";
+  case WL_SCAN_COMPLETED:
+    return "scan_completed";
+  case WL_CONNECTED:
+    return "connected";
+  case WL_CONNECT_FAILED:
+    return "connect_failed";
+  case WL_CONNECTION_LOST:
+    return "connection_lost";
+  case WL_DISCONNECTED:
+    return "disconnected";
+  default:
+    return "unknown";
   }
 }
 
-void connect_wifi() {
-  if (!has_wifi_credentials()) {
+void connect_wifi()
+{
+  if (!has_wifi_credentials())
+  {
     serial_println("Missing Wi-Fi credentials. Define WIFI_SSID and WIFI_PASSWORD in include/secrets.h.");
     return;
   }
@@ -171,7 +255,8 @@ void connect_wifi() {
   serial_println("Connecting to configured Wi-Fi.");
   const uint32_t started_ms = millis();
   uint32_t attempt_count = 0;
-  while (WiFi.status() != WL_CONNECTED && millis() - started_ms < wifi_connect_timeout_ms) {
+  while (WiFi.status() != WL_CONNECTED && millis() - started_ms < wifi_connect_timeout_ms)
+  {
     delay(500);
     attempt_count++;
     const uint32_t elapsed_ms = millis() - started_ms;
@@ -183,7 +268,8 @@ void connect_wifi() {
         wifi_status_text(current_status));
   }
 
-  if (WiFi.status() != WL_CONNECTED) {
+  if (WiFi.status() != WL_CONNECTED)
+  {
     serial_printf("Wi-Fi connection failed. final_status=%s\n", wifi_status_text(WiFi.status()));
     return;
   }
@@ -195,7 +281,8 @@ void connect_wifi() {
       WiFi.localIP().toString().c_str());
 }
 
-void configure_routes() {
+void configure_routes()
+{
   server.on("/", HTTP_GET, handle_root);
   server.on("/health", HTTP_GET, handle_health);
   server.on("/jpg", HTTP_GET, handle_jpg);
@@ -204,9 +291,11 @@ void configure_routes() {
   serial_printf("HTTP server started on port %u.\n", http_port);
 }
 
-void print_serial_heartbeat() {
+void print_serial_heartbeat()
+{
   const uint32_t now = millis();
-  if (now - last_serial_heartbeat_ms < serial_heartbeat_interval_ms) {
+  if (now - last_serial_heartbeat_ms < serial_heartbeat_interval_ms)
+  {
     return;
   }
 
@@ -220,7 +309,8 @@ void print_serial_heartbeat() {
       static_cast<unsigned long>(failed_capture_count));
 }
 
-void setup() {
+void setup()
+{
   Serial.begin(serial_baud, SERIAL_8N1, serial_rx_pin, serial_tx_pin);
   Serial.setDebugOutput(true);
   delay(1500);
@@ -230,18 +320,27 @@ void setup() {
 
   camera_config_t config = camera_config();
   esp_err_t camera_status = esp_camera_init(&config);
-  if (camera_status != ESP_OK) {
+  if (camera_status != ESP_OK)
+  {
     serial_printf("Camera init failed: 0x%x\n", camera_status);
-  } else {
+  }
+  else
+  {
+    if (!configure_camera_sensor())
+    {
+      serial_println("Camera sensor tuning failed.");
+    }
+    warmup_camera_sensor();
     camera_ready = true;
-    serial_println("Camera initialized.");
+    serial_println("Camera initialized with VGA low-light tuning.");
   }
 
   connect_wifi();
   configure_routes();
 }
 
-void loop() {
+void loop()
+{
   server.handleClient();
   print_serial_heartbeat();
 }

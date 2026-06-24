@@ -31,4 +31,4 @@ dist/
 .python-version
 
 # ESP32-CAM local credentials
-src/chicken_thread_detetor_esp32cam/esp32cam_extention/include/secrets.h
+src/firmware/esp32cam_extention/include/secrets.h
