@@ -10,6 +10,9 @@ from smart_home_bridge.bridge_devices.chicken_thread_detector import (
     chicken_thread_detector_controller,
     chicken_thread_detector_mqtt_callbacks,
 )
+from smart_home_bridge.bridge_devices.chicken_thread_detector.chicken_thread_detector_message import (
+    handle_chicken_thread_detector_mqtt_message,
+)
 from smart_home_bridge.config import (
     CameraConfig,
     ChickenThreatConfig,
@@ -70,6 +73,44 @@ def test_mqtt_callback_decodes_detection_payload_and_scores_state():
     callbacks.on_message(None, None, message)
 
     assert detector.assessment.level == ThreatLevel.MEDIUM
+
+
+def test_detector_message_decodes_detection_payload_and_scores_state():
+    detector = chicken_thread_detector(2, "thread-detector")
+    controller = chicken_thread_detector_controller(detector)
+    payload = json.dumps(
+        {
+            "detections": [
+                {"label": "bird_of_prey", "confidence": 0.8},
+            ]
+        }
+    )
+
+    asyncio.run(
+        handle_chicken_thread_detector_mqtt_message(
+            "loxone/chicken-thread-detector",
+            payload.encode(),
+            controller,
+        )
+    )
+
+    assert detector.assessment.level == ThreatLevel.MEDIUM
+
+
+def test_detector_message_ignores_published_assessment_payloads():
+    detector = chicken_thread_detector(2, "thread-detector")
+    controller = chicken_thread_detector_controller(detector)
+    payload = json.dumps({"level": "high", "score": 0.75})
+
+    asyncio.run(
+        handle_chicken_thread_detector_mqtt_message(
+            "loxone/chicken-thread-detector",
+            payload.encode(),
+            controller,
+        )
+    )
+
+    assert detector.assessment.level == ThreatLevel.NONE
 
 
 def test_mqtt_callback_ignores_published_assessment_payloads():

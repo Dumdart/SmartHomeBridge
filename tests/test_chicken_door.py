@@ -7,6 +7,9 @@ from smart_home_bridge.bridge_devices.chicken_door import (
     door_controller,
     door_position,
 )
+from smart_home_bridge.bridge_devices.chicken_door.chicken_door_message import (
+    handle_chicken_door_mqtt_message,
+)
 from smart_home_bridge.config import HttpConfig, MqttConfig, app_config, DoorApiConfig
 from smart_home_bridge.infrastructure.api.http_gate import HttpGateInterface
 
@@ -57,6 +60,21 @@ def test_mqtt_callback_decodes_payload_and_executes_command():
     message = SimpleNamespace(topic="loxone/chicken-door", payload=b"open_door")
 
     callbacks.on_message(None, None, message)
+
+    assert door.position == door_position.OPEN
+
+
+def test_door_message_decodes_payload_and_executes_command():
+    door = chicken_door(1, "door", door_position.CLOSED)
+    controller = door_controller(door, FakeHttpGate())
+
+    asyncio.run(
+        handle_chicken_door_mqtt_message(
+            "loxone/chicken-door",
+            b" open_door ",
+            controller,
+        )
+    )
 
     assert door.position == door_position.OPEN
 
