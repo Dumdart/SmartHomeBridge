@@ -24,8 +24,5 @@ async def handle_chicken_door_mqtt_message(
     payload: bytes,
     controller: door_controller,
 ):
-    try:
-        message = chicken_door_message.from_mqtt_payload(topic, payload)
-        return await message.handle(controller)
-    except Exception as e:
-        print(f"Message is not a command: {e}")
+    message = chicken_door_message.from_mqtt_payload(topic, payload)
+    return await message.handle(controller)

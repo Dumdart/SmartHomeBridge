@@ -71,6 +71,47 @@ def test_load_config_reads_independent_camera_and_threat_settings(tmp_path):
     assert config.chicken_threat.poll_interval_seconds == 7.5
 
 
+def test_load_config_reads_bridge_device_settings(tmp_path):
+    env_path = tmp_path / ".env"
+    env_path.write_text(
+        "\n".join(
+            [
+                "DOOR_API_KEY=api-key",
+                "DOOR_DEVICE_ID=device-id",
+                "MQTT_HOST=mqtt.local",
+                "MQTT_PORT=1883",
+                "MQTT_USERNAME=user",
+                "MQTT_PASSWORD=password",
+                "MQTT_BASE_TOPIC=loxone",
+                "BRIDGE_DEVICES_ENABLED=chicken_door",
+                "CHICKEN_DOOR_BRIDGE_ID=42",
+                "CHICKEN_DOOR_BRIDGE_NAME=coop_door",
+                "CHICKEN_DOOR_COMMAND_TOPIC=coop/door/cmd",
+                "CHICKEN_DOOR_STATUS_TOPIC=coop/door/state",
+                "CHICKEN_THREAD_DETECTOR_BRIDGE_ID=43",
+                "CHICKEN_THREAD_DETECTOR_BRIDGE_NAME=coop_detector",
+                "CHICKEN_THREAD_DETECTOR_TOPIC=coop/detector/detections",
+            ]
+        )
+        + "\n"
+    )
+
+    config = load_config(str(env_path), override=True)
+
+    assert config.devices.enabled == ("chicken_door",)
+    assert config.devices.is_enabled("chicken_door") is True
+    assert config.devices.is_enabled("chicken_thread_detector") is False
+    door_config = config.devices.for_device("chicken_door")
+    detector_config = config.devices.for_device("chicken_thread_detector")
+    assert door_config.device_id == 42
+    assert door_config.name == "coop_door"
+    assert door_config.topic("command", "") == "coop/door/cmd"
+    assert door_config.topic("status", "") == "coop/door/state"
+    assert detector_config.device_id == 43
+    assert detector_config.name == "coop_detector"
+    assert detector_config.topic("detections", "") == "coop/detector/detections"
+
+
 def test_load_config_disables_chicken_threat_by_default(tmp_path, monkeypatch):
     monkeypatch.delenv("CHICKEN_THREAT_ENABLED", raising=False)
     env_path = tmp_path / ".env"

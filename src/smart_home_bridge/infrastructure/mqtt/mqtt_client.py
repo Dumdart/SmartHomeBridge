@@ -40,7 +40,6 @@ class MqttClient:
             self.client.on_publish = on_publish
 
         result = self.client.publish(topic, payload, qos=1, retain=retain)
-        # result.wait_for_publish()
 
         if result.rc != paho.MQTT_ERR_SUCCESS:
             raise RuntimeError(

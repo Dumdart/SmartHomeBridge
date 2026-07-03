@@ -45,6 +45,10 @@ class MainWindow(QMainWindow):
         self.detector_topic_value = QLabel(self.context.detector_topic)
         self.http_endpoint_value = QLabel(self._http_endpoint())
         self.camera_endpoint_value = QLabel(self._camera_endpoint())
+        self.camera_health_value = QLabel("Unknown")
+        self.camera_health_value.setObjectName("cameraHealthValue")
+        self.camera_health_value.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.camera_health_value.setProperty("tone", "neutral")
         self.threat_level_value = QLabel(self.context.threat_detector.assessment.level.value)
         self.threat_level_value.setObjectName("threatLevelValue")
         self.threat_level_value.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -90,6 +94,7 @@ class MainWindow(QMainWindow):
         self._populate_settings_fields()
         self._refresh_status_labels()
         self._append_log("GUI started.")
+        self._refresh_camera_health(log=True)
 
     def _build_layout(self):
         root = QWidget()
@@ -163,6 +168,7 @@ class MainWindow(QMainWindow):
         self._add_detail_row(layout, 1, 0, "Detector topic", self.detector_topic_value)
         self._add_detail_row(layout, 2, 0, "HTTP diagnostics", self.http_endpoint_value)
         self._add_detail_row(layout, 3, 0, "Camera endpoint", self.camera_endpoint_value)
+        self._add_detail_row(layout, 4, 0, "Camera health", self.camera_health_value)
         self._add_detail_row(layout, 0, 2, "Detector score", self.threat_score_value)
         layout.addWidget(self.threat_score_bar, 1, 3)
         self._add_detail_row(layout, 2, 2, "Detector count", self.threat_count_value)
@@ -241,7 +247,10 @@ class MainWindow(QMainWindow):
         scan_button = QPushButton("Run Inference")
         scan_button.setObjectName("primaryButton")
         scan_button.clicked.connect(self._run_threat_scan)
+        health_button = QPushButton("Check Health")
+        health_button.clicked.connect(lambda: self._refresh_camera_health(log=True))
         button_row.addWidget(scan_button)
+        button_row.addWidget(health_button)
         button_row.addStretch(1)
 
         caption = QLabel("Latest annotated camera frame")
@@ -281,6 +290,10 @@ class MainWindow(QMainWindow):
         )
 
     def _run_threat_scan(self):
+        self._set_status("Running inference", "working")
+        if not self._refresh_camera_health():
+            self._append_log("Threat inference skipped because camera health check failed.")
+            return
         self._set_status("Running inference", "working")
 
         try:
@@ -351,8 +364,9 @@ class MainWindow(QMainWindow):
         self.context.door.position = previous_state
         self.context.threat_detector.assessment = previous_assessment
         self._refresh_status_labels()
-
-        self._set_status("Ready", "good")
+        camera_healthy = self._refresh_camera_health(log=True)
+        if camera_healthy:
+            self._set_status("Ready", "good")
         self._append_log("Environment settings saved.")
 
     def _refresh_status_labels(self):
@@ -366,6 +380,24 @@ class MainWindow(QMainWindow):
         self.http_endpoint_value.setText(self._http_endpoint())
         self.camera_endpoint_value.setText(self._camera_endpoint())
         self._refresh_threat_labels()
+
+    def _refresh_camera_health(self, log: bool = False) -> bool:
+        self._set_status("Checking camera", "working")
+        is_healthy = self.context.threat_scan_service.camera_client.health()
+        if is_healthy:
+            self.camera_health_value.setText("Available")
+            self._set_badge_tone(self.camera_health_value, "good")
+            self._set_status("Ready", "good")
+            if log:
+                self._append_log(f"Camera health check passed: {self._camera_health_endpoint()}")
+            return True
+
+        self.camera_health_value.setText("Unavailable")
+        self._set_badge_tone(self.camera_health_value, "danger")
+        self._set_status("Camera unavailable", "danger")
+        if log:
+            self._append_log(f"Camera health check failed: {self._camera_health_endpoint()}")
+        return False
 
     def _refresh_threat_labels(self):
         assessment = self.context.threat_detector.assessment
@@ -422,6 +454,10 @@ class MainWindow(QMainWindow):
         config = self.context.config.camera
         return f"{config.host}:{config.port}{config.jpg_endpoint}"
 
+    def _camera_health_endpoint(self) -> str:
+        config = self.context.config.camera
+        return f"http://{config.host}:{config.port}/{config.health_endpoint.lstrip('/')}"
+
 
 APP_STYLESHEET = """
 QMainWindow,
@@ -469,7 +505,8 @@ QLabel#detailValue {
 
 QLabel#doorStateValue,
 QLabel#threatLevelValue,
-QLabel#statusValue {
+QLabel#statusValue,
+QLabel#cameraHealthValue {
     border-radius: 6px;
     font-weight: 700;
     padding: 6px 10px;

@@ -241,6 +241,8 @@ def test_application_entrypoint_imports():
 
 def test_application_wires_door_commands_to_mqtt_publish():
     from smart_home_bridge.__main__ import App
+    from smart_home_bridge.bridge_devices.registry import create_bridge_device_compositions
+    from smart_home_bridge.composition import create_bridge_composition
 
     config = app_config(
         door_api=DoorApiConfig(
@@ -266,7 +268,13 @@ def test_application_wires_door_commands_to_mqtt_publish():
     app = App(
         config,
         mqtt_client_factory=lambda _: FakeMqttClient(),
-        door_gateway_factory=lambda _: None,
+        composition_factory=lambda config: create_bridge_composition(
+            config,
+            device_composition_factory=lambda config: create_bridge_device_compositions(
+                config,
+                door_gateway_factory=lambda _: None,
+            ),
+        ),
     )
     app.door.position = door_position.CLOSED
 

@@ -25,10 +25,11 @@ pio device monitor -e esp32cam
 `/jpg` and `/health` require an `Authorization: Bearer <CAMERA_AUTH_TOKEN>` header.
 The firmware returns `503` when `CAMERA_AUTH_TOKEN` is not configured.
 
-After the device connects, the serial monitor prints the camera URL, for example:
+After the device connects, the serial monitor prints the health URL, for example:
 
 ```text
-Camera API: http://192.168.1.42/jpg
+Camera health: http://192.168.1.42/health
 ```
 
-Use that `/jpg` URL as the image source for the chicken threat inference process.
+Use `/health` for startup availability checks and `/jpg` as the image source for
+the chicken threat inference process.

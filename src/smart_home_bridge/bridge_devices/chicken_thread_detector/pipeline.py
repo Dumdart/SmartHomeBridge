@@ -93,6 +93,11 @@ class ChickenThreatDetectionPipeline:
         if self._task is not None and not self._task.done():
             return
 
+        if not await asyncio.to_thread(self.camera_client.health):
+            print("Chicken threat detection pipeline not started: camera health check failed.")
+            return
+
+        print("Chicken threat detection camera health check passed.")
         self._task = asyncio.create_task(self._poll())
 
     async def stop(self):

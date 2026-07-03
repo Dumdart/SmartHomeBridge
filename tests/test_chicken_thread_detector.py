@@ -3,6 +3,8 @@ import json
 from io import BytesIO
 from types import SimpleNamespace
 
+import pytest
+
 from smart_home_bridge.bridge_devices.chicken_thread_detector import (
     ChickenThreatInferenceService,
     DangerScorer,
@@ -109,13 +111,14 @@ def test_detector_message_rejects_oversized_payload():
     controller = chicken_thread_detector_controller(detector)
     payload = b"{" + (b" " * MAX_DETECTOR_PAYLOAD_BYTES)
 
-    asyncio.run(
-        handle_chicken_thread_detector_mqtt_message(
-            "loxone/chicken-thread-detector",
-            payload,
-            controller,
+    with pytest.raises(ValueError, match="Detector payload exceeds"):
+        asyncio.run(
+            handle_chicken_thread_detector_mqtt_message(
+                "loxone/chicken-thread-detector",
+                payload,
+                controller,
+            )
         )
-    )
 
     assert detector.assessment.level == ThreatLevel.NONE
 
@@ -132,13 +135,14 @@ def test_detector_message_rejects_too_many_detections():
         }
     )
 
-    asyncio.run(
-        handle_chicken_thread_detector_mqtt_message(
-            "loxone/chicken-thread-detector",
-            payload.encode(),
-            controller,
+    with pytest.raises(ValueError, match="more than"):
+        asyncio.run(
+            handle_chicken_thread_detector_mqtt_message(
+                "loxone/chicken-thread-detector",
+                payload.encode(),
+                controller,
+            )
         )
-    )
 
     assert detector.assessment.level == ThreatLevel.NONE
 
@@ -165,6 +169,38 @@ def test_mqtt_callback_ignores_published_assessment_payloads():
     callbacks = chicken_thread_detector_mqtt_callbacks(controller)
     payload = json.dumps({"level": "high", "score": 0.75})
     message = SimpleNamespace(topic="loxone/chicken-thread-detector", payload=payload.encode())
+
+    callbacks.on_message(None, None, message)
+
+    assert detector.assessment.level == ThreatLevel.NONE
+
+
+def test_mqtt_callback_ignores_retained_detection_payloads():
+    detector = chicken_thread_detector(2, "thread-detector")
+    controller = chicken_thread_detector_controller(detector)
+    callbacks = chicken_thread_detector_mqtt_callbacks(controller)
+    payload = json.dumps({"detections": [{"label": "fox", "confidence": 0.96}]})
+    message = SimpleNamespace(
+        topic="loxone/chicken-thread-detector",
+        payload=payload.encode(),
+        retain=True,
+    )
+
+    callbacks.on_message(None, None, message)
+
+    assert detector.assessment.level == ThreatLevel.NONE
+
+
+def test_mqtt_callback_swallows_invalid_detection_payloads():
+    detector = chicken_thread_detector(2, "thread-detector")
+    controller = chicken_thread_detector_controller(detector)
+    callbacks = chicken_thread_detector_mqtt_callbacks(controller)
+    payload = b"{" + (b" " * MAX_DETECTOR_PAYLOAD_BYTES)
+    message = SimpleNamespace(
+        topic="loxone/chicken-thread-detector",
+        payload=payload,
+        retain=False,
+    )
 
     callbacks.on_message(None, None, message)
 

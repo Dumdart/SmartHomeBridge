@@ -313,19 +313,19 @@ void connect_wifi()
     return;
   }
 
-  String camera_url = String("http://") + WiFi.localIP().toString();
+  String health_url = String("http://") + WiFi.localIP().toString();
   if (http_port != 80)
   {
-    camera_url += ":";
-    camera_url += String(http_port);
+    health_url += ":";
+    health_url += String(http_port);
   }
-  camera_url += "/jpg";
+  health_url += "/health";
 
   serial_printf(
-      "Wi-Fi connected. ip=%s rssi_dbm=%ld Camera API: %s\n",
+      "Wi-Fi connected. ip=%s rssi_dbm=%ld Camera health: %s\n",
       WiFi.localIP().toString().c_str(),
       static_cast<long>(WiFi.RSSI()),
-      camera_url.c_str());
+      health_url.c_str());
 }
 
 void configure_routes()

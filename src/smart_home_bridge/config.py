@@ -45,6 +45,36 @@ class ChickenThreatConfig:
 
 
 @dataclass(frozen=True)
+class BridgeDeviceConfig:
+    key: str
+    enabled: bool = True
+    device_id: int | None = None
+    name: str | None = None
+    topics: dict[str, str] = field(default_factory=dict)
+
+    def topic(self, name: str, default: str) -> str:
+        return self.topics.get(name, default)
+
+
+@dataclass(frozen=True)
+class BridgeDevicesConfig:
+    enabled: tuple[str, ...] = ("chicken_door", "chicken_thread_detector")
+    configs: dict[str, BridgeDeviceConfig] = field(default_factory=dict)
+
+    def is_enabled(self, key: str) -> bool:
+        device_config = self.configs.get(key)
+        if device_config is not None:
+            return device_config.enabled and key in self.enabled
+        return key in self.enabled
+
+    def for_device(self, key: str) -> BridgeDeviceConfig:
+        device_config = self.configs.get(key)
+        if device_config is not None:
+            return device_config
+        return BridgeDeviceConfig(key=key, enabled=key in self.enabled)
+
+
+@dataclass(frozen=True)
 class app_config:
     door_api: DoorApiConfig
     mqtt: MqttConfig
@@ -53,6 +83,7 @@ class app_config:
     log_file_path: str = "logs/smart-home-bridge.log"
     camera: CameraConfig = field(default_factory=CameraConfig)
     chicken_threat: ChickenThreatConfig = field(default_factory=ChickenThreatConfig)
+    devices: BridgeDevicesConfig = field(default_factory=BridgeDevicesConfig)
 
 
 def load_config(dotenv_path: str | None = None, override: bool = False) -> app_config:
@@ -94,6 +125,7 @@ def load_config(dotenv_path: str | None = None, override: bool = False) -> app_c
             ),
             poll_interval_seconds=_float("CHICKEN_THREAT_POLL_INTERVAL_SECONDS", 10.0),
         ),
+        devices=_bridge_devices_config(),
     )
 
 
@@ -139,3 +171,79 @@ def _bool(name: str, default: bool) -> bool:
         return False
 
     raise ValueError(f"Environment variable {name} must be a boolean")
+
+
+def _csv(name: str, default: tuple[str, ...]) -> tuple[str, ...]:
+    value = os.getenv(name)
+    if value is None or value.strip() == "":
+        return default
+
+    return tuple(part.strip() for part in value.split(",") if part.strip())
+
+
+def _optional_int(name: str, default: int | None = None) -> int | None:
+    value = os.getenv(name)
+    if value is None or value.strip() == "":
+        return default
+
+    try:
+        return int(value)
+    except ValueError as exc:
+        raise ValueError(f"Environment variable {name} must be an integer") from exc
+
+
+def _bridge_devices_config() -> BridgeDevicesConfig:
+    enabled = _csv(
+        "BRIDGE_DEVICES_ENABLED",
+        ("chicken_door", "chicken_thread_detector"),
+    )
+    return BridgeDevicesConfig(
+        enabled=enabled,
+        configs={
+            "chicken_door": BridgeDeviceConfig(
+                key="chicken_door",
+                enabled="chicken_door" in enabled,
+                device_id=_optional_int("CHICKEN_DOOR_BRIDGE_ID", 1),
+                name=_get("CHICKEN_DOOR_BRIDGE_NAME", "door"),
+                topics={
+                    "command": _get(
+                        "CHICKEN_DOOR_COMMAND_TOPIC",
+                        "chicken-door/command",
+                    ),
+                    "status": _get("CHICKEN_DOOR_STATUS_TOPIC", "chicken-door/status"),
+                    "status_code": _get(
+                        "CHICKEN_DOOR_STATUS_CODE_TOPIC",
+                        "chicken-door/status_code",
+                    ),
+                    "fault": _get("CHICKEN_DOOR_FAULT_TOPIC", "chicken-door/fault"),
+                    "connected": _get(
+                        "CHICKEN_DOOR_CONNECTED_TOPIC",
+                        "chicken-door/connected",
+                    ),
+                    "battery": _get(
+                        "CHICKEN_DOOR_BATTERY_TOPIC",
+                        "chicken-door/battery",
+                    ),
+                    "light_level": _get(
+                        "CHICKEN_DOOR_LIGHT_LEVEL_TOPIC",
+                        "chicken-door/light_level",
+                    ),
+                },
+            ),
+            "chicken_thread_detector": BridgeDeviceConfig(
+                key="chicken_thread_detector",
+                enabled="chicken_thread_detector" in enabled,
+                device_id=_optional_int("CHICKEN_THREAD_DETECTOR_BRIDGE_ID", 2),
+                name=_get(
+                    "CHICKEN_THREAD_DETECTOR_BRIDGE_NAME",
+                    "chicken_thread_detector",
+                ),
+                topics={
+                    "detections": _get(
+                        "CHICKEN_THREAD_DETECTOR_TOPIC",
+                        "chicken-thread-detector",
+                    ),
+                },
+            ),
+        },
+    )

@@ -6,6 +6,7 @@ from smart_home_bridge.bridge_devices.chicken_thread_detector import (
     chicken_thread_detector,
     chicken_thread_detector_controller,
 )
+from smart_home_bridge.bridge_devices.registry import create_bridge_device_compositions
 from smart_home_bridge.composition import create_bridge_composition
 from smart_home_bridge.config import DoorApiConfig, app_config
 from smart_home_bridge.gui.threat_detection import GuiThreatScanService
@@ -34,7 +35,13 @@ def create_gui_bridge_context(
     if door_gateway_factory is None:
         composition = create_bridge_composition(config)
     else:
-        composition = create_bridge_composition(config, door_gateway_factory)
+        composition = create_bridge_composition(
+            config,
+            device_composition_factory=lambda config: create_bridge_device_compositions(
+                config,
+                door_gateway_factory,
+            ),
+        )
 
     return GuiBridgeContext(
         config=config,

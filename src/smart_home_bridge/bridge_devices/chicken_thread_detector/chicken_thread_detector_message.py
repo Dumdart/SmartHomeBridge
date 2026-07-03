@@ -56,11 +56,8 @@ async def handle_chicken_thread_detector_mqtt_message(
     payload: bytes,
     controller: chicken_thread_detector_controller,
 ):
-    try:
-        message = chicken_thread_detector_message.from_mqtt_payload(topic, payload)
-        return await message.handle(controller)
-    except Exception as e:
-        print(f"Message is not a detector payload or command: {e}")
+    message = chicken_thread_detector_message.from_mqtt_payload(topic, payload)
+    return await message.handle(controller)
 
 
 def _validate_detection_payload(payload: dict[str, Any]):

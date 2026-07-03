@@ -12,6 +12,7 @@ class FakeCameraClient:
         self.image_bytes = image_bytes
         self.error = error
         self.fetch_count = 0
+        self.health_count = 0
 
     def fetch_jpeg(self):
         self.fetch_count += 1
@@ -21,6 +22,7 @@ class FakeCameraClient:
         return self.image_bytes
 
     def health(self):
+        self.health_count += 1
         return self.error is None
 
 
@@ -124,7 +126,7 @@ def test_pipeline_does_not_score_when_inference_fails():
     assert controller.frames == []
 
 
-def test_pipeline_start_and_stop_manage_background_task():
+def test_pipeline_start_and_stop_manage_background_task(capsys):
     async def exercise_pipeline():
         pipeline = ChickenThreatDetectionPipeline(
             camera_client=FakeCameraClient(),
@@ -139,3 +141,27 @@ def test_pipeline_start_and_stop_manage_background_task():
         assert pipeline._task is None
 
     asyncio.run(exercise_pipeline())
+    assert "Chicken threat detection camera health check passed." in capsys.readouterr().out
+
+
+def test_pipeline_start_uses_health_check_before_polling(capsys):
+    async def exercise_pipeline():
+        camera = FakeCameraClient(error=RuntimeError("camera down"))
+        pipeline = ChickenThreatDetectionPipeline(
+            camera_client=camera,
+            inference_service=FakeInferenceService(),
+            detector_controller=FakeDetectorController(),
+            poll_interval_seconds=60,
+        )
+
+        await pipeline.start()
+
+        assert camera.health_count == 1
+        assert camera.fetch_count == 0
+        assert pipeline._task is None
+
+    asyncio.run(exercise_pipeline())
+    assert (
+        "Chicken threat detection pipeline not started: camera health check failed."
+        in capsys.readouterr().out
+    )
