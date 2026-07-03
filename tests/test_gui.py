@@ -30,9 +30,8 @@ from smart_home_bridge.models import (
 def _config():
     return app_config(
         door_api=DoorApiConfig(
-            base_url="http://door.local",
-            username="user",
-            password="password",
+            api_key="api-key",
+            device_id="device-id",
         ),
         mqtt=MqttConfig(
             host="mqtt.local",
@@ -79,7 +78,7 @@ def test_gui_context_wires_chicken_threat_detector():
 
 
 def test_gui_context_controller_executes_commands():
-    context = create_gui_bridge_context(_config())
+    context = create_gui_bridge_context(_config(), door_gateway_factory=lambda _: None)
     context.door.position = door_position.CLOSED
 
     result = asyncio.run(context.door_controller.excecute_command("open_door"))

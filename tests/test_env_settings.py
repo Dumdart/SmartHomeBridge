@@ -7,9 +7,8 @@ def test_env_settings_saves_mqtt_and_http_config(tmp_path):
     env_path.write_text(
         "\n".join(
             [
-                "DOOR_API_BASE_URL=https://sensor.local",
-                "DOOR_API_USERNAME=user",
-                "DOOR_API_PASSWORD=access_password",
+                "DOOR_API_KEY=api-key",
+                "DOOR_DEVICE_ID=device-id",
                 "MQTT_HOST=old-broker",
                 "MQTT_PORT=1883",
                 "MQTT_USERNAME=old-user",
@@ -36,7 +35,8 @@ def test_env_settings_saves_mqtt_and_http_config(tmp_path):
     )
 
     content = env_path.read_text()
-    assert "DOOR_API_PASSWORD=access_password" in content
+    assert "DOOR_API_KEY=api-key" in content
+    assert "DOOR_DEVICE_ID=device-id" in content
     assert "LOG_LEVEL=DEBUG" in content
     assert "MQTT_HOST=mqtt.local" in content
     assert "MQTT_PORT=8883" in content

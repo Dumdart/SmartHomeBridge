@@ -194,9 +194,8 @@ def test_application_wires_thread_detector_to_mqtt_publish():
 
     config = app_config(
         door_api=DoorApiConfig(
-            base_url="http://door.local",
-            username="user",
-            password="password",
+            api_key="api-key",
+            device_id="device-id",
         ),
         mqtt=MqttConfig(
             host="mqtt.local",
@@ -248,9 +247,8 @@ def test_application_does_not_build_threat_pipeline_when_disabled():
 
     config = app_config(
         door_api=DoorApiConfig(
-            base_url="http://door.local",
-            username="user",
-            password="password",
+            api_key="api-key",
+            device_id="device-id",
         ),
         mqtt=MqttConfig(
             host="mqtt.local",
@@ -274,9 +272,8 @@ def test_application_wires_independent_camera_threat_pipeline():
 
     config = app_config(
         door_api=DoorApiConfig(
-            base_url="http://door.local",
-            username="user",
-            password="password",
+            api_key="api-key",
+            device_id="device-id",
         ),
         mqtt=MqttConfig(
             host="mqtt.local",
@@ -309,9 +306,8 @@ def test_threat_pipeline_run_publishes_assessment():
 
     config = app_config(
         door_api=DoorApiConfig(
-            base_url="http://door.local",
-            username="user",
-            password="password",
+            api_key="api-key",
+            device_id="device-id",
         ),
         mqtt=MqttConfig(
             host="mqtt.local",

@@ -4,6 +4,8 @@ from smart_home_bridge.bridge_devices.chicken_door.chicken_door import (
     chicken_door,
     door_position,
 )
+from smart_home_bridge.bridge_devices.chicken_door.door_gateway import DoorGateway
+from smart_home_bridge.bridge_devices.chicken_door.door_status import door_status
 from smart_home_bridge.bridge_devices.chicken_door.chicken_door_mqtt_callbacks import (
     chicken_door_mqtt_callbacks,
 )
@@ -24,11 +26,13 @@ __all__ = [
     "GET_DOOR_STATE_COMMAND",
     "OPEN_DOOR_COMMAND",
     "STOP_DOOR_COMMAND",
+    "DoorGateway",
     "chicken_door",
     "chicken_door_mqtt_callbacks",
     "close_door_command",
     "door_controller",
     "door_position",
+    "door_status",
     "get_door_state_command",
     "open_door_command",
     "stop_door_command",

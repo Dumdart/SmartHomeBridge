@@ -47,3 +47,43 @@
 [2026-06-24 11:36:11] Threat inference completed with none risk from 0 detections.
 [2026-06-24 11:36:13] Threat inference completed with none risk from 0 detections.
 [2026-06-24 11:36:14] Threat inference completed with none risk from 0 detections.
+[2026-06-24 21:45:03] GUI started.
+[2026-06-24 21:45:26] open_door completed with state open.
+[2026-06-24 21:45:28] close_door completed with state closed.
+[2026-06-24 21:45:28] close_door completed with state closed.
+[2026-06-24 21:45:29] open_door completed with state open.
+[2026-06-24 21:45:34] stop_door completed with state open.
+[2026-06-24 21:46:10] Threat inference completed with none risk from 0 detections.
+[2026-06-24 21:46:10] Threat inference completed with none risk from 0 detections.
+[2026-06-24 21:46:28] Threat inference failed: Camera GET request timed out for /jpg
+[2026-06-24 21:46:29] Threat inference completed with none risk from 1 detections.
+[2026-06-25 13:48:53] GUI started.
+[2026-06-25 14:02:55] Threat inference completed with none risk from 0 detections.
+[2026-06-25 14:03:10] Threat inference completed with none risk from 1 detections.
+[2026-06-25 14:03:15] Threat inference completed with none risk from 1 detections.
+[2026-06-25 14:03:16] Threat inference completed with medium risk from 1 detections.
+[2026-06-25 14:03:33] Threat inference completed with none risk from 1 detections.
+[2026-06-25 14:03:50] Threat inference completed with low risk from 1 detections.
+[2026-06-25 14:03:52] Threat inference completed with none risk from 1 detections.
+[2026-06-25 14:03:53] Threat inference completed with none risk from 0 detections.
+[2026-06-25 14:03:54] Threat inference completed with medium risk from 1 detections.
+[2026-06-25 14:03:57] Threat inference completed with none risk from 0 detections.
+[2026-06-25 14:03:59] Threat inference completed with none risk from 0 detections.
+[2026-06-25 14:04:01] Threat inference completed with none risk from 0 detections.
+[2026-06-25 14:04:04] Threat inference completed with medium risk from 1 detections.
+[2026-06-25 14:04:12] Threat inference completed with low risk from 2 detections.
+[2026-06-25 14:11:14] Threat inference completed with none risk from 0 detections.
+[2026-06-25 14:11:17] Threat inference completed with none risk from 1 detections.
+[2026-06-25 14:11:19] Threat inference completed with none risk from 1 detections.
+[2026-06-25 14:11:22] Threat inference completed with none risk from 1 detections.
+[2026-06-25 14:11:24] Threat inference completed with none risk from 5 detections.
+[2026-06-25 14:11:26] Threat inference completed with none risk from 1 detections.
+[2026-06-25 14:11:28] Threat inference completed with none risk from 1 detections.
+[2026-07-03 16:38:39] GUI started.
+[2026-07-03 16:38:57] get_door_state completed with state open.
+[2026-07-03 16:39:01] close_door completed with state closepending.
+[2026-07-03 16:39:06] stop_door completed with state stopping.
+[2026-07-03 16:39:11] get_door_state completed with state unknown.
+[2026-07-03 16:39:13] get_door_state completed with state unknown.
+[2026-07-03 16:39:17] open_door completed with state openpending.
+[2026-07-03 16:39:27] get_door_state completed with state closing.

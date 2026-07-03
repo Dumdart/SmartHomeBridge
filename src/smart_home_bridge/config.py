@@ -6,9 +6,8 @@ from dotenv import load_dotenv
 
 @dataclass(frozen=True)
 class DoorApiConfig:
-    base_url: str
-    username: str
-    password: str
+    api_key: str = field(repr=False)
+    device_id: str
 
 
 @dataclass(frozen=True)
@@ -58,9 +57,8 @@ def load_config(dotenv_path: str | None = None, override: bool = False) -> app_c
 
     return app_config(
         door_api=DoorApiConfig(
-            base_url=_required("DOOR_API_BASE_URL"),
-            username=_required("DOOR_API_USERNAME"),
-            password=_required("DOOR_API_PASSWORD"),
+            api_key=_required("DOOR_API_KEY"),
+            device_id=_required("DOOR_DEVICE_ID"),
         ),
         mqtt=MqttConfig(
             host=_required("MQTT_HOST"),

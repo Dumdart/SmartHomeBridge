@@ -5,6 +5,11 @@ from smart_home_bridge.core.device import device
 class door_position(str, Enum):
     OPEN = "open"
     CLOSED = "closed"
+    OPENING = "opening"
+    CLOSING = "closing"
+    OPEN_PENDING = "openpending"
+    CLOSE_PENDING = "closepending"
+    STOPPING = "stopping"
     UNKNOWN = "unknown"
 
 

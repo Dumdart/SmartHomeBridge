@@ -55,9 +55,8 @@ def _config(
 ) -> app_config:
     return app_config(
         door_api=DoorApiConfig(
-            base_url="http://door.local",
-            username="user",
-            password="password",
+            api_key="api-key",
+            device_id="device-id",
         ),
         mqtt=MqttConfig(
             host="mqtt.local",

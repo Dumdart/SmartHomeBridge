@@ -109,7 +109,7 @@ Detector assessments are published on the detector MQTT topic, for example
 2. Install dependencies:
 
 ```bash
-pip install -e ".[dev]"
+pip install -e ".[gui]"
 ```
 
 Install the optional desktop GUI dependencies when you want the local control

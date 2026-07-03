@@ -7,9 +7,8 @@ def test_load_config_reads_log_file_path(tmp_path):
     env_path.write_text(
         "\n".join(
             [
-                "DOOR_API_BASE_URL=http://door.local",
-                "DOOR_API_USERNAME=user",
-                "DOOR_API_PASSWORD=password",
+                "DOOR_API_KEY=api-key",
+                "DOOR_DEVICE_ID=device-id",
                 "MQTT_HOST=mqtt.local",
                 "MQTT_PORT=1883",
                 "MQTT_USERNAME=user",
@@ -34,9 +33,8 @@ def test_load_config_reads_independent_camera_and_threat_settings(tmp_path):
     env_path.write_text(
         "\n".join(
             [
-                "DOOR_API_BASE_URL=http://door.local",
-                "DOOR_API_USERNAME=user",
-                "DOOR_API_PASSWORD=password",
+                "DOOR_API_KEY=api-key",
+                "DOOR_DEVICE_ID=device-id",
                 "MQTT_HOST=mqtt.local",
                 "MQTT_PORT=1883",
                 "MQTT_USERNAME=user",
@@ -73,9 +71,8 @@ def test_load_config_disables_chicken_threat_by_default(tmp_path, monkeypatch):
     env_path.write_text(
         "\n".join(
             [
-                "DOOR_API_BASE_URL=http://door.local",
-                "DOOR_API_USERNAME=user",
-                "DOOR_API_PASSWORD=password",
+                "DOOR_API_KEY=api-key",
+                "DOOR_DEVICE_ID=device-id",
                 "MQTT_HOST=mqtt.local",
                 "MQTT_PORT=1883",
                 "MQTT_USERNAME=user",
@@ -89,3 +86,55 @@ def test_load_config_disables_chicken_threat_by_default(tmp_path, monkeypatch):
     config = load_config(str(env_path), override=True)
 
     assert config.chicken_threat.enabled is False
+
+
+def test_load_config_requires_door_api_key(tmp_path, monkeypatch):
+    monkeypatch.delenv("DOOR_API_KEY", raising=False)
+    monkeypatch.delenv("DOOR_DEVICE_ID", raising=False)
+    env_path = tmp_path / ".env"
+    env_path.write_text(
+        "\n".join(
+            [
+                "DOOR_DEVICE_ID=device-id",
+                "MQTT_HOST=mqtt.local",
+                "MQTT_PORT=1883",
+                "MQTT_USERNAME=user",
+                "MQTT_PASSWORD=password",
+                "MQTT_BASE_TOPIC=loxone",
+            ]
+        )
+        + "\n"
+    )
+
+    try:
+        load_config(str(env_path), override=True)
+    except ValueError as exc:
+        assert str(exc) == "Missing required environment variable: DOOR_API_KEY"
+    else:
+        raise AssertionError("Expected missing DOOR_API_KEY to be rejected")
+
+
+def test_load_config_requires_door_device_id(tmp_path, monkeypatch):
+    monkeypatch.delenv("DOOR_API_KEY", raising=False)
+    monkeypatch.delenv("DOOR_DEVICE_ID", raising=False)
+    env_path = tmp_path / ".env"
+    env_path.write_text(
+        "\n".join(
+            [
+                "DOOR_API_KEY=api-key",
+                "MQTT_HOST=mqtt.local",
+                "MQTT_PORT=1883",
+                "MQTT_USERNAME=user",
+                "MQTT_PASSWORD=password",
+                "MQTT_BASE_TOPIC=loxone",
+            ]
+        )
+        + "\n"
+    )
+
+    try:
+        load_config(str(env_path), override=True)
+    except ValueError as exc:
+        assert str(exc) == "Missing required environment variable: DOOR_DEVICE_ID"
+    else:
+        raise AssertionError("Expected missing DOOR_DEVICE_ID to be rejected")

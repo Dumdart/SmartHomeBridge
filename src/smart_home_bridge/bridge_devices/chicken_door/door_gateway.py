@@ -1,0 +1,13 @@
+from typing import Protocol
+
+from smart_home_bridge.bridge_devices.chicken_door.door_status import door_status
+
+
+class DoorGateway(Protocol):
+    def get_state(self) -> door_status: ...
+
+    def open(self) -> door_status: ...
+
+    def close(self) -> door_status: ...
+
+    def stop(self) -> door_status: ...

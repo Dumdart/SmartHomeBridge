@@ -1,6 +1,8 @@
 from dataclasses import dataclass
+from collections.abc import Callable
 
 from smart_home_bridge.bridge_devices.chicken_door import (
+    DoorGateway,
     chicken_door,
     door_controller,
     door_position,
@@ -14,9 +16,10 @@ from smart_home_bridge.bridge_devices.chicken_thread_detector import (
     chicken_thread_detector_controller,
     default_model_config,
 )
-from smart_home_bridge.config import app_config
+from smart_home_bridge.config import DoorApiConfig, app_config
 from smart_home_bridge.infrastructure.api.http_gate import HttpGate
 from smart_home_bridge.infrastructure.camera import CameraClient
+from smart_home_bridge.infrastructure.omlet import OmletDoorClient
 from smart_home_bridge.models import ChickenThreadModelConfig
 
 CHICKEN_DOOR_TOPIC = "chicken-door"
@@ -50,10 +53,14 @@ class BridgeComposition:
         )
 
 
-def create_bridge_composition(config: app_config) -> BridgeComposition:
+def create_bridge_composition(
+    config: app_config,
+    door_gateway_factory: Callable[[DoorApiConfig], DoorGateway | None] = OmletDoorClient,
+) -> BridgeComposition:
     door = chicken_door(1, "door", door_position.UNKNOWN)
     http_gate = HttpGate(config.http)
-    controller = door_controller(door)
+    door_gateway = door_gateway_factory(config.door_api)
+    controller = door_controller(door, gateway=door_gateway)
 
     model_config = default_model_config(config.chicken_threat.model_path)
     threat_detector = chicken_thread_detector(2, "chicken_thread_detector")

@@ -6,10 +6,11 @@ from smart_home_bridge.composition import (
     CHICKEN_THREAD_DETECTOR_TOPIC,
     create_bridge_composition,
 )
-from smart_home_bridge.config import MqttConfig, app_config, load_config
+from smart_home_bridge.config import DoorApiConfig, MqttConfig, app_config, load_config
 from smart_home_bridge.infrastructure.mqtt.mqtt_client import MqttClient
 from smart_home_bridge.infrastructure.mqtt.mqtt_gate import MqttAdapter, MqttGate
 from smart_home_bridge.bridge_devices.chicken_door import (
+    DoorGateway,
     chicken_door_mqtt_callbacks,
 )
 from smart_home_bridge.bridge_devices.chicken_thread_detector import (
@@ -22,11 +23,15 @@ class App:
         self,
         config: app_config,
         mqtt_client_factory: Callable[[MqttConfig], MqttAdapter] = MqttClient,
+        door_gateway_factory: Callable[[DoorApiConfig], DoorGateway | None] | None = None,
     ):
         self.name = "SmartHomeBridge"
         self.config = config        
         
-        self.composition = create_bridge_composition(config)
+        if door_gateway_factory is None:
+            self.composition = create_bridge_composition(config)
+        else:
+            self.composition = create_bridge_composition(config, door_gateway_factory)
         self.door = self.composition.door
         self.http_gate = self.composition.http_gate
         self.door_controller = self.composition.door_controller
