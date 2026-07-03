@@ -12,7 +12,7 @@ def test_mqtt_gate_publishes_to_built_topic_through_injected_client():
 
     asyncio.run(gate.publish("open"))
 
-    assert client.published == [("loxone/chicken-door", "open", callbacks.on_publish)]
+    assert client.published == [("loxone/chicken-door", "open", False, callbacks.on_publish)]
 
 
 def test_mqtt_gate_subscribes_and_registers_message_callback_through_injected_client():
@@ -32,8 +32,8 @@ class FakeMqttClient:
         self.subscribed = []
         self.message_callbacks = []
 
-    async def publish(self, topic, payload, on_publish=None):
-        self.published.append((topic, payload, on_publish))
+    async def publish(self, topic, payload, retain=False, on_publish=None):
+        self.published.append((topic, payload, retain, on_publish))
 
     async def subscribe(self, topic, on_subscribe=None):
         self.subscribed.append((topic, on_subscribe))

@@ -7,6 +7,7 @@ from smart_home_bridge.bridge_devices.chicken_door import (
     door_controller,
     door_position,
 )
+from smart_home_bridge.bridge_devices.chicken_door.door_mqtt_publisher import DoorMqttTopics
 from smart_home_bridge.bridge_devices.chicken_thread_detector import (
     ChickenThreatDetectionPipeline,
     ChickenThreatInferenceService,
@@ -23,6 +24,7 @@ from smart_home_bridge.infrastructure.omlet import OmletDoorClient
 from smart_home_bridge.models import ChickenThreadModelConfig
 
 CHICKEN_DOOR_TOPIC = "chicken-door"
+CHICKEN_DOOR_COMMAND_TOPIC = "chicken-door/command"
 CHICKEN_THREAD_DETECTOR_TOPIC = "chicken-thread-detector"
 
 
@@ -37,6 +39,7 @@ class BridgeComposition:
     threat_detector_controller: chicken_thread_detector_controller
     camera_client: CameraClient
     threat_inference_service: ChickenThreatInferenceService
+    door_topics: DoorMqttTopics
     command_topic: str
     detector_topic: str
 
@@ -83,10 +86,23 @@ def create_bridge_composition(
         threat_detector_controller=threat_controller,
         camera_client=camera_client,
         threat_inference_service=inference_service,
-        command_topic=build_topic(config.mqtt.base_topic, CHICKEN_DOOR_TOPIC),
+        door_topics=build_door_mqtt_topics(config.mqtt.base_topic),
+        command_topic=build_topic(config.mqtt.base_topic, CHICKEN_DOOR_COMMAND_TOPIC),
         detector_topic=build_topic(config.mqtt.base_topic, CHICKEN_THREAD_DETECTOR_TOPIC),
     )
 
 
 def build_topic(base_topic: str, topic: str) -> str:
     return f"{base_topic.rstrip('/')}/{topic.strip('/')}"
+
+
+def build_door_mqtt_topics(base_topic: str) -> DoorMqttTopics:
+    return DoorMqttTopics(
+        command=build_topic(base_topic, CHICKEN_DOOR_COMMAND_TOPIC),
+        status=build_topic(base_topic, "chicken-door/status"),
+        status_code=build_topic(base_topic, "chicken-door/status_code"),
+        fault=build_topic(base_topic, "chicken-door/fault"),
+        connected=build_topic(base_topic, "chicken-door/connected"),
+        battery=build_topic(base_topic, "chicken-door/battery"),
+        light_level=build_topic(base_topic, "chicken-door/light_level"),
+    )

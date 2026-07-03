@@ -1,4 +1,6 @@
 import asyncio
+import inspect
+from collections.abc import Awaitable, Callable
 
 from smart_home_bridge.bridge_devices.chicken_thread_detector.chicken_thread_detector_controller import (
     chicken_thread_detector_controller,
@@ -10,6 +12,11 @@ from smart_home_bridge.bridge_devices.chicken_thread_detector.scan import Chicke
 from smart_home_bridge.core.command import command_result
 from smart_home_bridge.infrastructure.camera import CameraClientInterface
 
+CameraInferenceUsageReporter = Callable[
+    [str | None, bool, str | None, float | None, int | None],
+    Awaitable[None] | None,
+]
+
 
 class ChickenThreatDetectionPipeline:
     def __init__(
@@ -19,6 +26,7 @@ class ChickenThreatDetectionPipeline:
         detector_controller: chicken_thread_detector_controller,
         poll_interval_seconds: float,
         source: str | None = None,
+        usage_reporter: CameraInferenceUsageReporter | None = None,
     ):
         self.scan_service = ChickenThreatScanService(
             camera_client=camera_client,
@@ -27,6 +35,7 @@ class ChickenThreatDetectionPipeline:
             source=source,
         )
         self.poll_interval_seconds = poll_interval_seconds
+        self.usage_reporter = usage_reporter
         self._task: asyncio.Task | None = None
 
     @property
@@ -63,7 +72,22 @@ class ChickenThreatDetectionPipeline:
 
     async def run_once(self) -> command_result:
         scan_result = await self.scan_service.scan_once()
+        await self._report_usage(scan_result)
         return scan_result.score_result
+
+    async def _report_usage(self, scan_result):
+        if self.usage_reporter is None:
+            return
+
+        report_result = self.usage_reporter(
+            scan_result.frame.source or self.source,
+            scan_result.score_result.success,
+            scan_result.assessment.level.value,
+            scan_result.assessment.score,
+            scan_result.assessment.detection_count,
+        )
+        if inspect.isawaitable(report_result):
+            await report_result
 
     async def start(self):
         if self._task is not None and not self._task.done():

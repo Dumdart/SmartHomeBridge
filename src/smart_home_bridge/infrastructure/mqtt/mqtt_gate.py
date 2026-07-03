@@ -11,7 +11,13 @@ class MqttAdapter(Protocol):
 
     async def disconnect(self, on_disconnect: Callable | None = None): ...
 
-    async def publish(self, topic, payload, on_publish: Callable | None = None): ...
+    async def publish(
+        self,
+        topic,
+        payload,
+        retain: bool = False,
+        on_publish: Callable | None = None,
+    ): ...
 
     async def subscribe(self, topic, on_subscribe: Callable | None = None): ...
 
@@ -39,8 +45,13 @@ class MqttGate:
     async def stop(self):
         await self.client.disconnect(self.callbacks("on_disconnect", self.mqtt_callbacks))
 
-    async def publish(self, payload):
-        await self.client.publish(self.topic, payload, self.callbacks("on_publish", self.mqtt_callbacks))
+    async def publish(self, payload, retain: bool = False):
+        await self.client.publish(
+            self.topic,
+            payload,
+            retain=retain,
+            on_publish=self.callbacks("on_publish", self.mqtt_callbacks),
+        )
 
     async def subscribe(self):
         await self.client.subscribe(self.topic, self.callbacks("on_subscribe", self.mqtt_callbacks))

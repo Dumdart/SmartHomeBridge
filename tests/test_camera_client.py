@@ -27,7 +27,9 @@ class FakeResponse:
     def __exit__(self, *_args):
         return False
 
-    def read(self):
+    def read(self, size=-1):
+        if size is not None and size >= 0:
+            return self.body[:size]
         return self.body
 
     def close(self):
@@ -67,6 +69,31 @@ def test_fetch_jpeg_returns_binary_body():
     assert fake_client.request.full_url == "http://esp32cam.local:80/jpg"
     assert fake_client.request.get_method() == "GET"
     assert fake_client.timeout == 2.5
+
+
+def test_fetch_jpeg_sends_camera_auth_token_when_configured():
+    client = CameraClient(
+        CameraConfig(host="esp32cam.local", auth_token="camera-token")
+    )
+    fake_client = FakeClient()
+    client.client = fake_client
+
+    assert client.fetch_jpeg() == JPEG_BYTES
+    assert fake_client.request.get_header("Authorization") == "Bearer camera-token"
+
+
+def test_fetch_jpeg_rejects_response_over_size_limit():
+    client = CameraClient(
+        CameraConfig(host="esp32cam.local", max_jpeg_bytes=len(JPEG_BYTES) - 1)
+    )
+    client.client = FakeClient()
+
+    try:
+        client.fetch_jpeg()
+    except RuntimeError as exc:
+        assert str(exc) == f"Camera response exceeded {len(JPEG_BYTES) - 1} bytes"
+    else:
+        raise AssertionError("Expected oversized camera response to be rejected")
 
 
 def test_fetch_jpeg_rejects_http_failure():

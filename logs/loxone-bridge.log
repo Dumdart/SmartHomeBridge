@@ -87,3 +87,15 @@
 [2026-07-03 16:39:13] get_door_state completed with state unknown.
 [2026-07-03 16:39:17] open_door completed with state openpending.
 [2026-07-03 16:39:27] get_door_state completed with state closing.
+[2026-07-03 17:31:44] GUI started.
+[2026-07-03 17:31:48] get_door_state completed with state openpending.
+[2026-07-03 17:31:52] stop_door completed with state stopping.
+[2026-07-03 17:31:55] get_door_state completed with state stopping.
+[2026-07-03 17:31:58] get_door_state completed with state stopping.
+[2026-07-03 17:32:03] close_door completed with state closepending.
+[2026-07-03 17:32:10] stop_door completed with state stopping.
+[2026-07-03 17:32:14] open_door completed with state openpending.
+[2026-07-03 17:33:06] close_door completed with state closepending.
+[2026-07-03 17:33:08] close_door completed with state closepending.
+[2026-07-03 17:33:34] open_door completed with state openpending.
+[2026-07-03 17:33:54] get_door_state completed with state open.

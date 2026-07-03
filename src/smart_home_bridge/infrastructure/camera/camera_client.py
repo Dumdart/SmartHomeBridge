@@ -45,15 +45,25 @@ class CameraClient(CameraClientInterface):
     def _get(self, endpoint: str) -> tuple[int, dict[str, str], bytes]:
         request = Request(
             self._build_url(endpoint),
-            headers={"Accept": "image/jpeg"},
+            headers=self._build_headers(),
             method="GET",
         )
 
         try:
             with self.client.open(request, timeout=self.config.timeout_seconds) as response:
-                return response.status, dict(response.headers.items()), response.read()
+                headers = dict(response.headers.items())
+                return response.status, headers, _read_limited(
+                    response,
+                    self.config.max_jpeg_bytes,
+                    "Camera response",
+                )
         except HTTPError as exc:
-            return exc.code, dict(exc.headers.items()), exc.read()
+            headers = dict(exc.headers.items())
+            return exc.code, headers, _read_limited(
+                exc,
+                self.config.max_jpeg_bytes,
+                "Camera error response",
+            )
         except URLError as exc:
             raise RuntimeError(f"Camera GET request failed for {endpoint}: {exc.reason}") from exc
         except TimeoutError as exc:
@@ -63,6 +73,13 @@ class CameraClient(CameraClientInterface):
         base_url = f"http://{self.config.host}:{self.config.port}"
         return f"{base_url.rstrip('/')}/{endpoint.lstrip('/')}"
 
+    def _build_headers(self) -> dict[str, str]:
+        headers = {"Accept": "image/jpeg"}
+        if self.config.auth_token:
+            headers["Authorization"] = f"Bearer {self.config.auth_token}"
+
+        return headers
+
 
 def _header_value(headers: dict[str, str], name: str) -> str | None:
     for key, value in headers.items():
@@ -70,3 +87,11 @@ def _header_value(headers: dict[str, str], name: str) -> str | None:
             return value
 
     return None
+
+
+def _read_limited(response, max_bytes: int, label: str) -> bytes:
+    body = response.read(max_bytes + 1)
+    if len(body) > max_bytes:
+        raise RuntimeError(f"{label} exceeded {max_bytes} bytes")
+
+    return body

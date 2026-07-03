@@ -3,7 +3,6 @@ from collections.abc import Callable
 import paho.mqtt.client as paho
 from paho import mqtt
 
-
 from smart_home_bridge.config import MqttConfig
 
 
@@ -16,7 +15,8 @@ class MqttClient:
         if on_connect:
             self.client.on_connect = on_connect
 
-        self.client.tls_set(tls_version=mqtt.client.ssl.PROTOCOL_TLS)
+        if self.config.use_tls:
+            self.client.tls_set(tls_version=mqtt.client.ssl.PROTOCOL_TLS)
         self.client.username_pw_set(self.config.username, self.config.password)
 
         self.client.connect(self.config.host, self.config.port)
@@ -29,15 +29,23 @@ class MqttClient:
         self.client.disconnect()
         self.client.loop_stop()
 
-    async def publish(self, topic, payload, on_publish: Callable | None = None):
+    async def publish(
+        self,
+        topic,
+        payload,
+        retain: bool = False,
+        on_publish: Callable | None = None,
+    ):
         if on_publish:
             self.client.on_publish = on_publish
 
-        result = self.client.publish(topic, payload, qos=1)
-        result.wait_for_publish()
+        result = self.client.publish(topic, payload, qos=1, retain=retain)
+        # result.wait_for_publish()
 
         if result.rc != paho.MQTT_ERR_SUCCESS:
-            raise RuntimeError(f"Failed to publish MQTT message: {paho.error_string(result.rc)}")
+            raise RuntimeError(
+                f"Failed to publish MQTT message: {paho.error_string(result.rc)}"
+            )
 
     async def subscribe(self, topic, on_subscribe: Callable | None = None):
         if on_subscribe:

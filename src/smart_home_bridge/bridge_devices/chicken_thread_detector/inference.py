@@ -5,6 +5,9 @@ from typing import Any
 from smart_home_bridge.bridge_devices.chicken_thread_detector.detector import (
     LocalChickenThreadDetector,
 )
+from smart_home_bridge.bridge_devices.chicken_thread_detector.image_limits import (
+    validate_image_size,
+)
 from smart_home_bridge.models import DetectionFrame
 
 
@@ -32,5 +35,6 @@ def _decode_jpeg(image_bytes: bytes) -> Any:
         raise RuntimeError("Install Pillow to decode camera JPEG frames.") from exc
 
     image = Image.open(BytesIO(image_bytes))
+    validate_image_size(image)
     image.load()
     return image

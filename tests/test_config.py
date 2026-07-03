@@ -14,6 +14,7 @@ def test_load_config_reads_log_file_path(tmp_path):
                 "MQTT_USERNAME=user",
                 "MQTT_PASSWORD=password",
                 "MQTT_BASE_TOPIC=loxone",
+                "MQTT_USE_TLS=true",
                 "HTTP_HOST=localhost",
                 "HTTP_PORT=8080",
                 "LOG_LEVEL=DEBUG",
@@ -26,6 +27,7 @@ def test_load_config_reads_log_file_path(tmp_path):
     config = load_config(str(env_path), override=True)
 
     assert config.log_file_path == str(log_file_path)
+    assert config.mqtt.use_tls is True
 
 
 def test_load_config_reads_independent_camera_and_threat_settings(tmp_path):
@@ -45,6 +47,8 @@ def test_load_config_reads_independent_camera_and_threat_settings(tmp_path):
                 "CAMERA_JPG_ENDPOINT=/jpg",
                 "CAMERA_HEALTH_ENDPOINT=/health",
                 "CAMERA_TIMEOUT_SECONDS=2.5",
+                "CAMERA_MAX_JPEG_BYTES=123456",
+                "CAMERA_AUTH_TOKEN=camera-token",
                 "CHICKEN_THREAT_ENABLED=true",
                 "CHICKEN_THREAT_MODEL_PATH=/models/chicken_threat_detector_best.pt",
                 "CHICKEN_THREAT_POLL_INTERVAL_SECONDS=7.5",
@@ -60,6 +64,8 @@ def test_load_config_reads_independent_camera_and_threat_settings(tmp_path):
     assert config.camera.jpg_endpoint == "/jpg"
     assert config.camera.health_endpoint == "/health"
     assert config.camera.timeout_seconds == 2.5
+    assert config.camera.max_jpeg_bytes == 123456
+    assert config.camera.auth_token == "camera-token"
     assert config.chicken_threat.enabled is True
     assert config.chicken_threat.model_path == "/models/chicken_threat_detector_best.pt"
     assert config.chicken_threat.poll_interval_seconds == 7.5

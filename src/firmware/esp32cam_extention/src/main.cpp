@@ -3,6 +3,7 @@
 #include <WiFi.h>
 #include <esp_camera.h>
 #include <cstdarg>
+#include <cstring>
 
 #if __has_include("secrets.h")
 #include "secrets.h"
@@ -46,6 +47,10 @@
 
 #ifndef CAMERA_HTTP_PORT
 #define CAMERA_HTTP_PORT 80
+#endif
+
+#ifndef CAMERA_AUTH_TOKEN
+#define CAMERA_AUTH_TOKEN ""
 #endif
 
 constexpr uint32_t serial_baud = 115200;
@@ -170,6 +175,25 @@ void send_text(int status_code, const String &body)
   server.send(status_code, "text/plain; charset=utf-8", body);
 }
 
+bool authorize_request()
+{
+  if (strlen(CAMERA_AUTH_TOKEN) == 0)
+  {
+    send_text(503, "camera auth token is not configured\n");
+    return false;
+  }
+
+  const String expected = String("Bearer ") + CAMERA_AUTH_TOKEN;
+  if (server.header("Authorization") != expected)
+  {
+    server.sendHeader("WWW-Authenticate", "Bearer");
+    send_text(401, "unauthorized\n");
+    return false;
+  }
+
+  return true;
+}
+
 void handle_root()
 {
   send_text(200, "ESP32-CAM chicken barn camera. Use GET /jpg for the latest JPEG frame.\n");
@@ -177,6 +201,11 @@ void handle_root()
 
 void handle_health()
 {
+  if (!authorize_request())
+  {
+    return;
+  }
+
   const String ip = WiFi.localIP().toString();
   const String payload =
       String("{\"status\":\"ok\",\"camera_ready\":") + (camera_ready ? "true" : "false") +
@@ -189,6 +218,11 @@ void handle_health()
 
 void handle_jpg()
 {
+  if (!authorize_request())
+  {
+    return;
+  }
+
   if (!camera_ready)
   {
     send_text(503, "camera not ready\n");
@@ -296,6 +330,8 @@ void connect_wifi()
 
 void configure_routes()
 {
+  const char *auth_header_keys[] = {"Authorization"};
+  server.collectHeaders(auth_header_keys, 1);
   server.on("/", HTTP_GET, handle_root);
   server.on("/health", HTTP_GET, handle_health);
   server.on("/jpg", HTTP_GET, handle_jpg);

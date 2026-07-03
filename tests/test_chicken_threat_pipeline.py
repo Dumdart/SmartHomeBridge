@@ -54,6 +54,11 @@ class FakeDetectorController:
 
 
 def test_pipeline_fetches_infers_scores_and_publishes_assessment():
+    reported_usage = []
+
+    async def report_usage(source, success, level, score, detection_count):
+        reported_usage.append((source, success, level, score, detection_count))
+
     camera = FakeCameraClient()
     frame = DetectionFrame(source="esp32cam")
     inference = FakeInferenceService(frame=frame)
@@ -64,6 +69,7 @@ def test_pipeline_fetches_infers_scores_and_publishes_assessment():
         detector_controller=controller,
         poll_interval_seconds=10,
         source="esp32cam",
+        usage_reporter=report_usage,
     )
 
     result = asyncio.run(pipeline.run_once())
@@ -72,6 +78,7 @@ def test_pipeline_fetches_infers_scores_and_publishes_assessment():
     assert camera.fetch_count == 1
     assert inference.calls == [(b"\xff\xd8frame", "esp32cam")]
     assert controller.frames == [frame]
+    assert reported_usage == [("esp32cam", True, "none", 0, 0)]
 
 
 def test_pipeline_does_not_score_when_camera_fetch_fails():

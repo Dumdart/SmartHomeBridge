@@ -14,7 +14,7 @@ Loxone App
 Loxone Virtual Output
    -> UDP/HTTP command to LoxBerry MQTT Gateway
    ->
-MQTT topic: barn/chicken-door/cmd
+MQTT topic: smart-home-bridge/chicken-door/command
    ->
 Python backend/plugin
    ->
@@ -22,7 +22,7 @@ Door vendor API
    ->
 Python backend publishes state
    ->
-MQTT topic: barn/chicken-door/state/*
+MQTT topics: smart-home-bridge/chicken-door/status*
    ->
 LoxBerry MQTT Gateway
    -> HTTP/UDP to Loxone Virtual Inputs
@@ -67,6 +67,43 @@ The GUI provides:
 * Run on the same LAN as the Miniserver
 * Use authentication and restricted ACLs
 
+### MQTT Contract
+
+Set `MQTT_BASE_TOPIC` to the namespace only, for example `smart-home-bridge`.
+The chicken door command subscription is:
+
+```text
+smart-home-bridge/chicken-door/command
+```
+
+Supported command payloads are `open_door`, `close_door`, `stop_door`, and
+`get_door_state`.
+
+Door state is published as retained scalar values:
+
+```text
+smart-home-bridge/chicken-door/status
+smart-home-bridge/chicken-door/status_code
+smart-home-bridge/chicken-door/fault
+smart-home-bridge/chicken-door/connected
+smart-home-bridge/chicken-door/battery
+smart-home-bridge/chicken-door/light_level
+```
+
+`status_code` uses `0=unknown`, `1=open`, `2=closed`, `3=opening/openpending`,
+`4=closing/closepending`, `5=stopping`, and `6=fault`.
+
+Usage events are also published as non-retained JSON messages:
+
+```text
+smart-home-bridge/usage/chicken-door
+smart-home-bridge/usage/camera-inference
+```
+
+Chicken door usage events include the command, success flag, resulting position,
+and timestamp. Camera inference usage events include the camera source, success
+flag, assessment level, score, detection count, and timestamp.
+
 ### Chicken Threat Detector
 
 The chicken threat detector can run as an independent backend pipeline:
@@ -91,12 +128,14 @@ Configure the detector with:
 * `CAMERA_JPG_ENDPOINT`: JPEG endpoint, usually `/jpg`
 * `CAMERA_HEALTH_ENDPOINT`: optional health endpoint, usually `/health`
 * `CAMERA_TIMEOUT_SECONDS`: camera request timeout
+* `CAMERA_MAX_JPEG_BYTES`: maximum accepted camera JPEG response size
+* `CAMERA_AUTH_TOKEN`: bearer token sent to ESP32-CAM `/jpg` and `/health`
 * `CHICKEN_THREAT_ENABLED`: set to `true` to start backend polling
 * `CHICKEN_THREAT_MODEL_PATH`: local YOLO model path
 * `CHICKEN_THREAT_POLL_INTERVAL_SECONDS`: seconds between camera frames
 
 Detector assessments are published on the detector MQTT topic, for example
-`barn/chicken-door/chicken-thread-detector`, as JSON:
+`smart-home-bridge/chicken-thread-detector`, as JSON:
 
 ```json
 {"level":"medium","score":0.675,"detection_count":1,"triggering_detections":[{"label":"dog","confidence":0.9,"box":null}]}
@@ -168,8 +207,8 @@ docker build -t smart-home-bridge:local .
 ```
 
 The compose service reads runtime settings from `.env`. Set `MQTT_HOST`,
-`MQTT_PORT`, `MQTT_USERNAME`, and `MQTT_PASSWORD` to the broker that the
-smart home system can reach.
+`MQTT_PORT`, `MQTT_USERNAME`, `MQTT_PASSWORD`, `MQTT_BASE_TOPIC`, and
+`MQTT_USE_TLS` to the broker that the smart home system can reach.
 
 The desktop GUI writes the same activity messages shown in the Activity panel
 to `LOG_FILE_PATH`. If the variable is not set, logs are appended to

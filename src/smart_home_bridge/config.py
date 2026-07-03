@@ -17,6 +17,7 @@ class MqttConfig:
     username: str
     password: str
     base_topic: str
+    use_tls: bool = False
 
 
 @dataclass(frozen=True)
@@ -32,6 +33,8 @@ class CameraConfig:
     jpg_endpoint: str = "/jpg"
     health_endpoint: str = "/health"
     timeout_seconds: float = 5.0
+    max_jpeg_bytes: int = 2_000_000
+    auth_token: str = field(default="", repr=False)
 
 
 @dataclass(frozen=True)
@@ -66,6 +69,7 @@ def load_config(dotenv_path: str | None = None, override: bool = False) -> app_c
             username=_required("MQTT_USERNAME"),
             password=_required("MQTT_PASSWORD"),
             base_topic=_required("MQTT_BASE_TOPIC"),
+            use_tls=_bool("MQTT_USE_TLS", False),
         ),
         http=HttpConfig(
             host=_get("HTTP_HOST", "0.0.0.0"),
@@ -79,6 +83,8 @@ def load_config(dotenv_path: str | None = None, override: bool = False) -> app_c
             jpg_endpoint=_get("CAMERA_JPG_ENDPOINT", "/jpg"),
             health_endpoint=_get("CAMERA_HEALTH_ENDPOINT", "/health"),
             timeout_seconds=_float("CAMERA_TIMEOUT_SECONDS", 5.0),
+            max_jpeg_bytes=_int("CAMERA_MAX_JPEG_BYTES", 2_000_000),
+            auth_token=_get("CAMERA_AUTH_TOKEN", ""),
         ),
         chicken_threat=ChickenThreatConfig(
             enabled=_bool("CHICKEN_THREAT_ENABLED", False),

@@ -14,6 +14,9 @@ from smart_home_bridge.config import (
 from smart_home_bridge.core.command import command_result
 from smart_home_bridge.gui import run
 from smart_home_bridge.gui.factory import create_gui_bridge_context
+from smart_home_bridge.bridge_devices.chicken_thread_detector.image_limits import (
+    MAX_IMAGE_PIXELS,
+)
 from smart_home_bridge.gui.threat_detection import (
     GuiThreatScanService,
     annotate_detection_jpeg,
@@ -60,7 +63,7 @@ def test_gui_context_wires_chicken_door_controller():
 
     assert context.door.position == door_position.UNKNOWN
     assert context.door_controller.device is context.door
-    assert context.command_topic == "loxone/chicken-door"
+    assert context.command_topic == "loxone/chicken-door/command"
     assert context.activity_log.log_file_path == Path("logs/smart-home-bridge.log")
 
 
@@ -136,6 +139,22 @@ def test_annotate_detection_jpeg_draws_detection_border():
 
     assert annotated.startswith(b"\xff\xd8")
     assert _has_colored_pixel(annotated) is True
+
+
+def test_annotate_detection_jpeg_rejects_oversized_image(monkeypatch):
+    from smart_home_bridge.gui import threat_detection
+
+    def reject_image(_image):
+        raise RuntimeError(f"Camera image exceeds {MAX_IMAGE_PIXELS} pixels: test")
+
+    monkeypatch.setattr(threat_detection, "validate_image_size", reject_image)
+
+    try:
+        annotate_detection_jpeg(_jpeg_bytes(), DetectionFrame())
+    except RuntimeError as exc:
+        assert f"exceeds {MAX_IMAGE_PIXELS} pixels" in str(exc)
+    else:
+        raise AssertionError("Expected oversized GUI image to be rejected")
 
 
 class FakeCameraClient:

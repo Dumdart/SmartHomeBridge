@@ -8,6 +8,7 @@ Copy `secrets.example.h` to `secrets.h` and replace the placeholder Wi-Fi values
 #define WIFI_SSID "your-wifi-ssid"
 #define WIFI_PASSWORD "your-wifi-password"
 #define CAMERA_HOSTNAME "chicken-barn-esp32cam"
+#define CAMERA_AUTH_TOKEN "change-me-camera-token"
 ```
 
 `secrets.h` is ignored by Git so Wi-Fi credentials are not committed to the public repo.

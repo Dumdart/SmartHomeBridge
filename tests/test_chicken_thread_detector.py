@@ -1,5 +1,6 @@
 import asyncio
 import json
+from io import BytesIO
 from types import SimpleNamespace
 
 from smart_home_bridge.bridge_devices.chicken_thread_detector import (
@@ -11,8 +12,14 @@ from smart_home_bridge.bridge_devices.chicken_thread_detector import (
     chicken_thread_detector_mqtt_callbacks,
 )
 from smart_home_bridge.bridge_devices.chicken_thread_detector.chicken_thread_detector_message import (
+    MAX_DETECTIONS_PER_MESSAGE,
+    MAX_DETECTOR_PAYLOAD_BYTES,
     handle_chicken_thread_detector_mqtt_message,
 )
+from smart_home_bridge.bridge_devices.chicken_thread_detector.image_limits import (
+    MAX_IMAGE_PIXELS,
+)
+from smart_home_bridge.bridge_devices.chicken_thread_detector.inference import _decode_jpeg
 from smart_home_bridge.config import (
     CameraConfig,
     ChickenThreatConfig,
@@ -95,6 +102,45 @@ def test_detector_message_decodes_detection_payload_and_scores_state():
     )
 
     assert detector.assessment.level == ThreatLevel.MEDIUM
+
+
+def test_detector_message_rejects_oversized_payload():
+    detector = chicken_thread_detector(2, "thread-detector")
+    controller = chicken_thread_detector_controller(detector)
+    payload = b"{" + (b" " * MAX_DETECTOR_PAYLOAD_BYTES)
+
+    asyncio.run(
+        handle_chicken_thread_detector_mqtt_message(
+            "loxone/chicken-thread-detector",
+            payload,
+            controller,
+        )
+    )
+
+    assert detector.assessment.level == ThreatLevel.NONE
+
+
+def test_detector_message_rejects_too_many_detections():
+    detector = chicken_thread_detector(2, "thread-detector")
+    controller = chicken_thread_detector_controller(detector)
+    payload = json.dumps(
+        {
+            "detections": [
+                {"label": "dog", "confidence": 0.9}
+                for _ in range(MAX_DETECTIONS_PER_MESSAGE + 1)
+            ]
+        }
+    )
+
+    asyncio.run(
+        handle_chicken_thread_detector_mqtt_message(
+            "loxone/chicken-thread-detector",
+            payload.encode(),
+            controller,
+        )
+    )
+
+    assert detector.assessment.level == ThreatLevel.NONE
 
 
 def test_detector_message_ignores_published_assessment_payloads():
@@ -189,6 +235,22 @@ def test_inference_service_decodes_jpeg_bytes_before_detection():
     assert fake_detector.calls == [("decoded:jpeg-bytes", "esp32cam")]
 
 
+def test_inference_decoder_rejects_oversized_image(monkeypatch):
+    from smart_home_bridge.bridge_devices.chicken_thread_detector import inference
+
+    def reject_image(_image):
+        raise RuntimeError(f"Camera image exceeds {MAX_IMAGE_PIXELS} pixels: test")
+
+    monkeypatch.setattr(inference, "validate_image_size", reject_image)
+
+    try:
+        _decode_jpeg(_jpeg_bytes())
+    except RuntimeError as exc:
+        assert f"exceeds {MAX_IMAGE_PIXELS} pixels" in str(exc)
+    else:
+        raise AssertionError("Expected oversized inference image to be rejected")
+
+
 def test_application_wires_thread_detector_to_mqtt_publish():
     from smart_home_bridge.__main__ import App
 
@@ -210,7 +272,7 @@ def test_application_wires_thread_detector_to_mqtt_publish():
     published = []
 
     class FakeMqttClient:
-        async def publish(self, topic, payload, on_publish=None):
+        async def publish(self, topic, payload, retain=False, on_publish=None):
             published.append((topic, json.loads(payload)))
 
     app = App(config, mqtt_client_factory=lambda _: FakeMqttClient())
@@ -339,7 +401,7 @@ def test_threat_pipeline_run_publishes_assessment():
             )
 
     class FakeMqttClient:
-        async def publish(self, topic, payload, on_publish=None):
+        async def publish(self, topic, payload, retain=False, on_publish=None):
             published.append((topic, json.loads(payload)))
 
     app = App(config, mqtt_client_factory=lambda _: FakeMqttClient())
@@ -349,20 +411,35 @@ def test_threat_pipeline_run_publishes_assessment():
     result = asyncio.run(app.chicken_threat_pipeline.run_once())
 
     assert result.success is True
-    assert published == [
-        (
-            "loxone/chicken-thread-detector",
-            {
-                "level": "medium",
-                "score": 0.675,
-                "detection_count": 1,
-                "triggering_detections": [
-                    {
-                        "label": "dog",
-                        "confidence": 0.9,
-                        "box": None,
-                    }
-                ],
-            },
-        )
-    ]
+    assert published[0] == (
+        "loxone/chicken-thread-detector",
+        {
+            "level": "medium",
+            "score": 0.675,
+            "detection_count": 1,
+            "triggering_detections": [
+                {
+                    "label": "dog",
+                    "confidence": 0.9,
+                    "box": None,
+                }
+            ],
+        },
+    )
+    usage_topic, usage_payload = published[1]
+    assert usage_topic == "loxone/usage/camera-inference"
+    assert usage_payload["event"] == "camera_inference"
+    assert usage_payload["source"] == "esp32cam.local"
+    assert usage_payload["success"] is True
+    assert usage_payload["level"] == "medium"
+    assert usage_payload["score"] == 0.675
+    assert usage_payload["detection_count"] == 1
+    assert "timestamp" in usage_payload
+
+
+def _jpeg_bytes() -> bytes:
+    from PIL import Image
+
+    output = BytesIO()
+    Image.new("RGB", (10, 10), "white").save(output, format="JPEG")
+    return output.getvalue()

@@ -6,6 +6,9 @@ from smart_home_bridge.bridge_devices.chicken_thread_detector import (
     ChickenThreatScanService,
     chicken_thread_detector_controller,
 )
+from smart_home_bridge.bridge_devices.chicken_thread_detector.image_limits import (
+    validate_image_size,
+)
 from smart_home_bridge.infrastructure.camera import CameraClientInterface
 from smart_home_bridge.models import BoundingBox, DangerAssessment, DetectionFrame
 
@@ -85,7 +88,9 @@ def annotate_detection_jpeg(image_bytes: bytes, frame: DetectionFrame) -> bytes:
     except ImportError as exc:
         raise RuntimeError("Install Pillow to render detector image annotations.") from exc
 
-    image = Image.open(BytesIO(image_bytes)).convert("RGB")
+    image = Image.open(BytesIO(image_bytes))
+    validate_image_size(image)
+    image = image.convert("RGB")
     draw = ImageDraw.Draw(image)
     width, height = image.size
 

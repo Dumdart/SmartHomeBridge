@@ -1,3 +1,14 @@
+# Agent Instructions
+
+## General
+- Work in focused, atomic steps. Prefer small, testable changes over large sweeping refactors.
+- Follow existing code patterns and architecture before introducing new abstractions.
+- Always run and fix failing tests before opening a PR.
+- Do not leave TODO comments or debug output in committed code.
+- Comment complex code with the format: "// Check ..." or "# Check ..."
+
+--- project-doc ---
+
 # Repository Guidelines
 
 ## Project Structure & Module Organization

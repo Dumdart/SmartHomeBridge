@@ -5,14 +5,14 @@ import inspect
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
-Publishable = Callable[[str], Awaitable[None] | None]
+Publishable = Callable[[object], Awaitable[None] | None]
 
 
 class command(ABC):
     def __init__(self, publishable: Publishable | None = None):
         self.publishable = publishable
 
-    async def publish(self, payload: str):
+    async def publish(self, payload: object):
         if self.publishable is None:
             return
 

@@ -13,6 +13,10 @@ class chicken_door_mqtt_callbacks(mqtt_callbacks):
         self.door_controller = door_controller
 
     def on_message(self, client, userdata, msg):
+        if getattr(msg, "retain", False):
+            print(f"Ignoring retained command message on topic {msg.topic}.")
+            return None
+
         return asyncio.run(
             handle_chicken_door_mqtt_message(msg.topic, msg.payload, self.door_controller)
         )

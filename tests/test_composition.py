@@ -19,7 +19,9 @@ def test_bridge_composition_wires_shared_devices_and_topics():
     assert composition.door_controller.device is composition.door
     assert composition.threat_detector_controller.detector is composition.threat_detector
     assert composition.threat_inference_service.detector.config is composition.threat_model_config
-    assert composition.command_topic == "loxone/chicken-door"
+    assert composition.command_topic == "loxone/chicken-door/command"
+    assert composition.door_topics.status == "loxone/chicken-door/status"
+    assert composition.door_topics.status_code == "loxone/chicken-door/status_code"
     assert composition.detector_topic == "loxone/chicken-thread-detector"
 
 
