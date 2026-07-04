@@ -1,10 +1,18 @@
 import asyncio
 import json
 import os
+import sys
 from collections.abc import Callable
 from typing import Any
 
+from smart_home_bridge.bridge_devices.chicken_door.door_controller import (
+    CLOSE_DOOR_COMMAND,
+    GET_DOOR_STATE_COMMAND,
+    OPEN_DOOR_COMMAND,
+    STOP_DOOR_COMMAND,
+)
 from smart_home_bridge.bridge_devices.runtime import BridgeDeviceRuntime
+from smart_home_bridge.bridge_devices.runtime import build_topic
 from smart_home_bridge.composition import BridgeComposition, create_bridge_composition
 from smart_home_bridge.config import MqttConfig, app_config, load_config, load_loxberry_config
 from smart_home_bridge.infrastructure.mqtt.mqtt_client import MqttClient
@@ -102,6 +110,41 @@ def status():
 def config_check():
     App(load_app_config())
     print(json.dumps({"ok": True}, sort_keys=True))
+
+
+async def _publish_door_command(command: str):
+    allowed_commands = {
+        OPEN_DOOR_COMMAND,
+        CLOSE_DOOR_COMMAND,
+        STOP_DOOR_COMMAND,
+        GET_DOOR_STATE_COMMAND,
+    }
+    if command not in allowed_commands:
+        allowed = ", ".join(sorted(allowed_commands))
+        raise ValueError(f"Unsupported door command '{command}'. Allowed: {allowed}")
+
+    config = load_app_config()
+    door_config = config.devices.for_device("chicken_door")
+    command_topic = build_topic(
+        config.mqtt.base_topic,
+        door_config.topic("command", "chicken-door/command"),
+    )
+    client = MqttClient(config.mqtt)
+    await client.connect()
+    try:
+        await client.publish(command_topic, command)
+    finally:
+        await client.disconnect()
+    print(json.dumps({"published": True, "topic": command_topic, "command": command}))
+
+
+def door_command():
+    if len(sys.argv) != 2:
+        raise SystemExit(
+            "Usage: smart-home-bridge-door-command "
+            "{open_door|close_door|stop_door|get_door_state}"
+        )
+    asyncio.run(_publish_door_command(sys.argv[1]))
 
 
 if __name__ == "__main__":
