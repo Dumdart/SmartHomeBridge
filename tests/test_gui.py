@@ -1,6 +1,10 @@
 import asyncio
+from dataclasses import replace
 from io import BytesIO
+import os
 from pathlib import Path
+
+import pytest
 
 from smart_home_bridge.bridge_devices.chicken_door import door_position
 from smart_home_bridge.config import (
@@ -30,7 +34,10 @@ from smart_home_bridge.models import (
 )
 
 
-def _config():
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+
+def _config(log_file_path: str = "logs/smart-home-bridge.log"):
     return app_config(
         door_api=DoorApiConfig(
             api_key="api-key",
@@ -45,6 +52,7 @@ def _config():
         ),
         http=HttpConfig(host="localhost", port=8080),
         log_level="INFO",
+        log_file_path=log_file_path,
         camera=CameraConfig(host="esp32cam.local", port=80, jpg_endpoint="/jpg"),
         chicken_threat=ChickenThreatConfig(
             enabled=True,
@@ -157,6 +165,125 @@ def test_annotate_detection_jpeg_rejects_oversized_image(monkeypatch):
         raise AssertionError("Expected oversized GUI image to be rejected")
 
 
+@pytest.fixture()
+def qt_app():
+    pytest.importorskip("PySide6")
+    from PySide6.QtWidgets import QApplication
+
+    app = QApplication.instance() or QApplication([])
+    return app
+
+
+def test_gui_panels_construct_without_device_clients(qt_app):
+    from smart_home_bridge.gui.widgets import (
+        ActivityLogPanel,
+        DiagnosticsPanel,
+        DoorControlPanel,
+        EnvironmentPanel,
+        StatusStrip,
+        ThreatDetectorPanel,
+    )
+
+    assert StatusStrip().objectName() == "statusStrip"
+    assert DoorControlPanel().objectName() == "operatorPanel"
+    assert ThreatDetectorPanel().objectName() == "threatPanel"
+    assert DiagnosticsPanel().objectName() == "diagnosticsPanel"
+    assert EnvironmentPanel().objectName() == "environmentPanel"
+    assert ActivityLogPanel().objectName() == "activityPanel"
+
+
+def test_gui_door_panel_emits_command_names(qt_app):
+    from PySide6.QtWidgets import QPushButton
+
+    from smart_home_bridge.gui.widgets import DoorControlPanel
+
+    panel = DoorControlPanel()
+    commands = []
+    panel.command_requested.connect(commands.append)
+
+    for button in panel.findChildren(QPushButton):
+        button.click()
+
+    assert commands == ["open_door", "close_door", "stop_door", "get_door_state"]
+
+
+def test_gui_environment_panel_populates_and_builds_configs(qt_app):
+    from smart_home_bridge.gui.widgets import EnvironmentPanel
+
+    panel = EnvironmentPanel()
+    panel.set_config(_config())
+    panel.mqtt_host_input.setText("mqtt.updated.local")
+    panel.http_port_input.setValue(9000)
+
+    assert panel.mqtt_config() == MqttConfig(
+        host="mqtt.updated.local",
+        port=8883,
+        username="user",
+        password="password",
+        base_topic="loxone",
+    )
+    assert panel.http_config() == HttpConfig(host="localhost", port=9000)
+    assert panel.mqtt_password_input.echoMode() == panel.mqtt_password_input.EchoMode.Password
+
+
+def test_gui_status_and_tone_mapping_updates_panels(qt_app, tmp_path):
+    from smart_home_bridge.gui.main_window import MainWindow
+
+    context = _window_context(tmp_path)
+    window = MainWindow(context)
+    context.door.position = door_position.CLOSED
+
+    window._refresh_status_labels()
+    window._set_camera_health("Available", "good")
+
+    assert window.status_strip.door_value.text() == "closed"
+    assert window.status_strip.door_value.property("tone") == "good"
+    assert window.door_panel.state_value.text() == "closed"
+    assert window.diagnostics_panel.camera_health_value.text() == "Available"
+    assert window.diagnostics_panel.camera_health_value.property("tone") == "good"
+
+
+def test_gui_main_window_wires_door_commands(qt_app, tmp_path):
+    from smart_home_bridge.gui.main_window import MainWindow
+
+    context = _window_context(tmp_path)
+    context.door.position = door_position.CLOSED
+    window = MainWindow(context)
+
+    window.door_panel.command_requested.emit("open_door")
+
+    assert context.door.position == door_position.OPEN
+    assert window.door_panel.state_value.text() == "open"
+    assert window.status_strip.bridge_value.text() == "Ready"
+
+
+def test_gui_main_window_save_environment_uses_panel_values(qt_app, tmp_path):
+    from smart_home_bridge.gui.main_window import MainWindow
+
+    env_settings = FakeEnvSettings()
+    context = _window_context(tmp_path, env_settings=env_settings)
+    window = MainWindow(context)
+    window.environment_panel.mqtt_host_input.setText("mqtt.saved.local")
+    window.environment_panel.http_port_input.setValue(9091)
+
+    window.environment_panel.save_requested.emit()
+
+    assert env_settings.saved_mqtt.host == "mqtt.saved.local"
+    assert env_settings.saved_http.port == 9091
+    assert window.diagnostics_panel.http_endpoint_value.text() == "localhost:9091"
+
+
+def test_gui_threat_panel_renders_valid_and_invalid_images(qt_app):
+    from smart_home_bridge.gui.widgets import ThreatDetectorPanel
+
+    panel = ThreatDetectorPanel()
+
+    assert panel.render_image(b"not an image") is False
+    assert panel.image_label.text() == "Could not render inferred frame"
+    assert panel.render_image(_jpeg_bytes()) is True
+    assert panel.image_label.pixmap() is not None
+
+
 class FakeCameraClient:
     def __init__(self, image_bytes):
         self.image_bytes = image_bytes
@@ -166,6 +293,19 @@ class FakeCameraClient:
 
     def health(self):
         return True
+
+
+class FakeEnvSettings:
+    def __init__(self):
+        self.saved_mqtt = None
+        self.saved_http = None
+        self.config = None
+
+    def save_mqtt_http(self, mqtt, http):
+        self.saved_mqtt = mqtt
+        self.saved_http = http
+        self.config = replace(self.config, mqtt=mqtt, http=http)
+        return self.config
 
 
 class FakeInferenceService:
@@ -194,6 +334,19 @@ def _jpeg_bytes() -> bytes:
     output = BytesIO()
     Image.new("RGB", (100, 100), "white").save(output, format="JPEG")
     return output.getvalue()
+
+
+def _window_context(tmp_path, env_settings=None):
+    config = _config(str(tmp_path / "smart-home-bridge.log"))
+    if env_settings is not None:
+        env_settings.config = config
+    context = create_gui_bridge_context(
+        config,
+        env_settings=env_settings,
+        door_gateway_factory=lambda _: None,
+    )
+    context.threat_scan_service.camera_client = FakeCameraClient(_jpeg_bytes())
+    return context
 
 
 def _has_colored_pixel(image_bytes: bytes) -> bool:

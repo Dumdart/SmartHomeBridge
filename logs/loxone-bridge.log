@@ -99,3 +99,45 @@
 [2026-07-03 17:33:08] close_door completed with state closepending.
 [2026-07-03 17:33:34] open_door completed with state openpending.
 [2026-07-03 17:33:54] get_door_state completed with state open.
+[2026-07-03 19:26:31] GUI started.
+[2026-07-03 19:26:32] Camera health check passed: http://10.16.15.90:80/health
+[2026-07-03 19:32:03] open_door completed with state openpending.
+[2026-07-03 19:32:05] close_door completed with state closepending.
+[2026-07-03 19:32:07] stop_door completed with state stopping.
+[2026-07-03 19:32:10] open_door completed with state openpending.
+[2026-07-03 19:32:13] stop_door completed with state stopping.
+[2026-07-03 19:32:25] Threat inference completed with none risk from 1 detections.
+[2026-07-03 19:32:42] Threat inference completed with none risk from 0 detections.
+[2026-07-03 19:32:44] Threat inference completed with medium risk from 1 detections.
+[2026-07-03 19:32:46] Threat inference completed with low risk from 1 detections.
+[2026-07-03 19:32:50] Threat inference completed with medium risk from 1 detections.
+[2026-07-03 19:32:56] Threat inference completed with none risk from 0 detections.
+[2026-07-03 19:32:58] Threat inference completed with none risk from 0 detections.
+[2026-07-03 19:33:00] Threat inference completed with high risk from 1 detections.
+[2026-07-03 19:41:55] GUI started.
+[2026-07-03 19:41:56] Camera health check passed: http://10.16.15.90:80/health
+[2026-07-03 19:42:12] Threat inference completed with none risk from 1 detections.
+[2026-07-03 19:42:26] get_door_state completed with state open.
+[2026-07-03 19:42:35] close_door completed with state closepending.
+[2026-07-03 19:42:40] Camera health check passed: http://10.16.15.90:80/health
+[2026-07-03 19:42:59] Threat inference completed with none risk from 1 detections.
+[2026-07-03 19:43:02] Threat inference completed with none risk from 1 detections.
+[2026-07-03 19:43:03] Threat inference completed with low risk from 1 detections.
+[2026-07-03 19:43:05] Threat inference completed with medium risk from 1 detections.
+[2026-07-03 19:43:06] Threat inference completed with none risk from 0 detections.
+[2026-07-03 19:43:07] Threat inference completed with none risk from 1 detections.
+[2026-07-03 19:43:09] Threat inference completed with none risk from 1 detections.
+[2026-07-03 19:43:10] Threat inference completed with none risk from 1 detections.
+[2026-07-03 19:43:11] Threat inference completed with none risk from 1 detections.
+[2026-07-03 19:43:12] Threat inference completed with none risk from 1 detections.
+[2026-07-03 19:43:16] get_door_state completed with state closed.
+[2026-07-03 19:43:23] open_door completed with state openpending.
+[2026-07-03 19:43:24] stop_door completed with state stopping.
+[2026-07-03 19:43:25] get_door_state completed with state unknown.
+[2026-07-03 19:43:27] get_door_state completed with state unknown.
+[2026-07-03 19:45:28] get_door_state completed with state openpending.
+[2026-07-03 19:45:30] get_door_state completed with state openpending.
+[2026-07-03 19:45:31] get_door_state completed with state openpending.
+[2026-07-03 19:45:32] get_door_state completed with state openpending.
+[2026-07-03 19:45:33] get_door_state completed with state open.
+[2026-07-03 19:45:34] get_door_state completed with state open.
