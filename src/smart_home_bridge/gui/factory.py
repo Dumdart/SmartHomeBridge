@@ -17,7 +17,7 @@ from smart_home_bridge.gui.control import (
 )
 from smart_home_bridge.gui.observer import GuiBackendObserver, LocalCompositionObserver
 from smart_home_bridge.gui.threat_detection import GuiThreatScanService
-from smart_home_bridge.services import ActivityLog, EnvSettingsService
+from smart_home_bridge.services import ActivityLog
 
 
 @dataclass(frozen=True)
@@ -30,7 +30,6 @@ class GuiBridgeContext:
     threat_scan_service: GuiThreatScanService
     command_topic: str
     detector_topic: str
-    env_settings: EnvSettingsService
     activity_log: ActivityLog
     observer: GuiBackendObserver
     backend_control: GuiBackendControl
@@ -39,7 +38,6 @@ class GuiBridgeContext:
 
 def create_gui_bridge_context(
     config: app_config,
-    env_settings: EnvSettingsService | None = None,
     door_gateway_factory: Callable[[DoorApiConfig], DoorGateway | None] | None = None,
 ) -> GuiBridgeContext:
     if door_gateway_factory is None:
@@ -76,7 +74,6 @@ def create_gui_bridge_context(
         threat_scan_service=threat_scan_service,
         command_topic=composition.command_topic,
         detector_topic=composition.detector_topic,
-        env_settings=env_settings or EnvSettingsService(),
         activity_log=ActivityLog(config.log_file_path),
         observer=observer,
         backend_control=LocalBackendControl(composition.door_controller),

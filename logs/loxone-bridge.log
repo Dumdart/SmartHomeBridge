@@ -141,3 +141,13 @@
 [2026-07-03 19:45:32] get_door_state completed with state openpending.
 [2026-07-03 19:45:33] get_door_state completed with state open.
 [2026-07-03 19:45:34] get_door_state completed with state open.
+[2026-07-04 15:59:15] GUI started.
+[2026-07-04 15:59:23] GUI started.
+[2026-07-04 15:59:28] Camera health check failed: http://10.16.15.90:80/health
+[2026-07-04 15:59:35] open_door completed with state openpending.
+[2026-07-04 15:59:47] get_door_state completed with state openpending.
+[2026-07-04 15:59:49] close_door completed with state closepending.
+[2026-07-04 15:59:52] stop_door completed with state stopping.
+[2026-07-04 15:59:53] get_door_state completed with state unknown.
+[2026-07-04 16:01:20] Threat inference skipped because camera health check failed.
+[2026-07-04 16:01:30] Camera health check failed: http://10.16.15.90:80/health

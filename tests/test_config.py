@@ -1,6 +1,10 @@
 import json
 
-from smart_home_bridge.config import load_config, load_loxberry_config
+from smart_home_bridge.config import (
+    load_config,
+    load_config_from_environment,
+    load_loxberry_config,
+)
 
 
 def test_load_config_reads_log_file_path(tmp_path):
@@ -30,6 +34,42 @@ def test_load_config_reads_log_file_path(tmp_path):
 
     assert config.log_file_path == str(log_file_path)
     assert config.mqtt.use_tls is True
+
+
+def test_load_config_from_environment_ignores_dotenv_file(tmp_path, monkeypatch):
+    env_path = tmp_path / ".env"
+    env_path.write_text(
+        "\n".join(
+            [
+                "DOOR_API_KEY=file-api-key",
+                "DOOR_DEVICE_ID=file-device-id",
+                "MQTT_HOST=file-mqtt.local",
+                "MQTT_PORT=1883",
+                "MQTT_USERNAME=file-user",
+                "MQTT_PASSWORD=file-password",
+                "MQTT_BASE_TOPIC=file-topic",
+            ]
+        )
+        + "\n"
+    )
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DOOR_API_KEY", "env-api-key")
+    monkeypatch.setenv("DOOR_DEVICE_ID", "env-device-id")
+    monkeypatch.setenv("MQTT_HOST", "env-mqtt.local")
+    monkeypatch.setenv("MQTT_PORT", "8883")
+    monkeypatch.setenv("MQTT_USERNAME", "env-user")
+    monkeypatch.setenv("MQTT_PASSWORD", "env-password")
+    monkeypatch.setenv("MQTT_BASE_TOPIC", "env-topic")
+
+    config = load_config_from_environment()
+
+    assert config.door_api.api_key == "env-api-key"
+    assert config.door_api.device_id == "env-device-id"
+    assert config.mqtt.host == "env-mqtt.local"
+    assert config.mqtt.port == 8883
+    assert config.mqtt.username == "env-user"
+    assert config.mqtt.password == "env-password"
+    assert config.mqtt.base_topic == "env-topic"
 
 
 def test_load_config_reads_independent_camera_and_threat_settings(tmp_path):

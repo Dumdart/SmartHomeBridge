@@ -1,22 +1,19 @@
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
-    QFormLayout,
     QFrame,
     QGridLayout,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
     QProgressBar,
     QPushButton,
     QSizePolicy,
-    QSpinBox,
     QTextEdit,
     QVBoxLayout,
     QWidget,
 )
 
-from smart_home_bridge.config import HttpConfig, MqttConfig, app_config
+from smart_home_bridge.config import app_config
 
 
 def set_badge_tone(widget: QLabel, tone: str):
@@ -332,67 +329,44 @@ class DiagnosticsPanel(QFrame):
 
 
 class EnvironmentPanel(QFrame):
-    save_requested = Signal()
-
     def __init__(self):
         super().__init__()
         layout = _panel_layout(self, "Environment", "environmentPanel")
+        self.mqtt_host_value = _detail_value()
+        self.mqtt_port_value = _detail_value()
+        self.mqtt_username_value = _detail_value()
+        self.mqtt_base_topic_value = _detail_value()
+        self.http_host_value = _detail_value()
+        self.http_port_value = _detail_value()
 
-        self.mqtt_host_input = QLineEdit()
-        self.mqtt_port_input = QSpinBox()
-        self.mqtt_port_input.setRange(1, 65535)
-        self.mqtt_username_input = QLineEdit()
-        self.mqtt_password_input = QLineEdit()
-        self.mqtt_password_input.setEchoMode(QLineEdit.EchoMode.Password)
-        self.mqtt_base_topic_input = QLineEdit()
-        self.http_host_input = QLineEdit()
-        self.http_port_input = QSpinBox()
-        self.http_port_input.setRange(1, 65535)
+        surface = QFrame()
+        surface.setObjectName("detailSurface")
+        grid = QGridLayout(surface)
+        grid.setContentsMargins(12, 10, 12, 10)
+        grid.setHorizontalSpacing(12)
+        grid.setVerticalSpacing(9)
+        grid.setColumnStretch(1, 1)
 
-        form = QFormLayout()
-        form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
-        form.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
-        form.setFormAlignment(Qt.AlignmentFlag.AlignTop)
-        form.setHorizontalSpacing(18)
-        form.setVerticalSpacing(9)
-        form.addRow("MQTT host", self.mqtt_host_input)
-        form.addRow("MQTT port", self.mqtt_port_input)
-        form.addRow("MQTT username", self.mqtt_username_input)
-        form.addRow("MQTT password", self.mqtt_password_input)
-        form.addRow("MQTT base topic", self.mqtt_base_topic_input)
-        form.addRow("HTTP host", self.http_host_input)
-        form.addRow("HTTP port", self.http_port_input)
+        self._add_detail(grid, 0, "MQTT host", self.mqtt_host_value)
+        self._add_detail(grid, 1, "MQTT port", self.mqtt_port_value)
+        self._add_detail(grid, 2, "MQTT username", self.mqtt_username_value)
+        self._add_detail(grid, 3, "MQTT base topic", self.mqtt_base_topic_value)
+        self._add_detail(grid, 4, "HTTP host", self.http_host_value)
+        self._add_detail(grid, 5, "HTTP port", self.http_port_value)
 
-        save_button = QPushButton("Save Environment")
-        save_button.setObjectName("primaryButton")
-        save_button.clicked.connect(self.save_requested.emit)
-        form.addRow(save_button)
+        layout.addWidget(surface)
 
-        layout.addLayout(form)
+    def _add_detail(self, layout: QGridLayout, row: int, label: str, value: QLabel):
+        layout.addWidget(_detail_label(label), row, 0)
+        layout.addWidget(value, row, 1)
 
     def set_config(self, config: app_config):
-        self.mqtt_host_input.setText(config.mqtt.host)
-        self.mqtt_port_input.setValue(config.mqtt.port)
-        self.mqtt_username_input.setText(config.mqtt.username)
-        self.mqtt_password_input.setText(config.mqtt.password)
-        self.mqtt_base_topic_input.setText(config.mqtt.base_topic)
-        self.http_host_input.setText(config.http.host)
-        self.http_port_input.setValue(config.http.port)
-
-    def mqtt_config(self) -> MqttConfig:
-        return MqttConfig(
-            host=self.mqtt_host_input.text().strip(),
-            port=self.mqtt_port_input.value(),
-            username=self.mqtt_username_input.text().strip(),
-            password=self.mqtt_password_input.text(),
-            base_topic=self.mqtt_base_topic_input.text().strip(),
-        )
-
-    def http_config(self) -> HttpConfig:
-        return HttpConfig(
-            host=self.http_host_input.text().strip(),
-            port=self.http_port_input.value(),
-        )
+        self.mqtt_host_value.setText(config.mqtt.host)
+        self.mqtt_port_value.setText(str(config.mqtt.port))
+        self.mqtt_username_value.setText(config.mqtt.username)
+        self.mqtt_base_topic_value.setText(config.mqtt.base_topic)
+        self.http_host_value.setText(config.http.host)
+        self.http_port_value.setText(str(config.http.port))
 
 
 class ActivityLogPanel(QFrame):

@@ -55,7 +55,6 @@ class MainWindow(QMainWindow):
         self.threat_panel.health_requested.connect(
             lambda: self._refresh_camera_health(log=True)
         )
-        self.environment_panel.save_requested.connect(self._save_environment_settings)
 
     def _build_layout(self):
         root = QWidget()
@@ -141,31 +140,6 @@ class MainWindow(QMainWindow):
 
     def _populate_settings_fields(self):
         self.environment_panel.set_config(self.context.config)
-
-    def _save_environment_settings(self):
-        self._set_status("Saving settings", "working")
-
-        try:
-            config = self.context.env_settings.save_mqtt_http(
-                mqtt=self.environment_panel.mqtt_config(),
-                http=self.environment_panel.http_config(),
-            )
-        except Exception as exc:
-            self._set_status("Save failed", "danger")
-            self._append_log(f"Environment save failed: {exc}")
-            return
-
-        update_config = getattr(self.context.observer, "update_config", None)
-        if update_config is not None:
-            update_config(config)
-        self._update_observer_backend_status("Settings saved - restart backend required")
-        self._refresh_status_labels()
-        camera_healthy = self._refresh_camera_health(log=True)
-        if camera_healthy:
-            self._set_status("Settings saved - restart backend required", "good")
-        self._append_log(
-            "Environment settings saved. Restart backend to apply runtime changes."
-        )
 
     def _refresh_status_labels(self):
         view_model = GuiBridgeViewModel.from_snapshot(self.context.observer.snapshot())

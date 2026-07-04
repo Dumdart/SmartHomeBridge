@@ -20,6 +20,8 @@ __pycache__/
 .coverage
 htmlcov/
 
+logs/
+
 build/
 dist/
 *.egg-info/
@@ -28,7 +30,3 @@ dist/
 
 # ESP32-CAM local credentials
 src/firmware/esp32cam_extention/include/secrets.h
-
-# Logs
-logs/
-logs/loxone-bridge.log

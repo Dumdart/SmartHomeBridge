@@ -283,23 +283,18 @@ def test_gui_door_panel_emits_command_names(qt_app):
     assert commands == ["open_door", "close_door", "stop_door", "get_door_state"]
 
 
-def test_gui_environment_panel_populates_and_builds_configs(qt_app):
+def test_gui_environment_panel_populates_read_only_values(qt_app):
     from smart_home_bridge.gui.widgets import EnvironmentPanel
 
     panel = EnvironmentPanel()
     panel.set_config(_config())
-    panel.mqtt_host_input.setText("mqtt.updated.local")
-    panel.http_port_input.setValue(9000)
 
-    assert panel.mqtt_config() == MqttConfig(
-        host="mqtt.updated.local",
-        port=8883,
-        username="user",
-        password="password",
-        base_topic="loxone",
-    )
-    assert panel.http_config() == HttpConfig(host="localhost", port=9000)
-    assert panel.mqtt_password_input.echoMode() == panel.mqtt_password_input.EchoMode.Password
+    assert panel.mqtt_host_value.text() == "mqtt.local"
+    assert panel.mqtt_port_value.text() == "8883"
+    assert panel.mqtt_username_value.text() == "user"
+    assert panel.mqtt_base_topic_value.text() == "loxone"
+    assert panel.http_host_value.text() == "localhost"
+    assert panel.http_port_value.text() == "8080"
 
 
 def test_gui_status_and_tone_mapping_updates_panels(qt_app, tmp_path):
@@ -345,25 +340,6 @@ def test_gui_main_window_uses_backend_control_adapter(qt_app, tmp_path):
 
     assert control.commands == ["close_door"]
     assert window.door_panel.state_value.text() == "closed"
-
-
-def test_gui_main_window_save_environment_uses_panel_values(qt_app, tmp_path):
-    from smart_home_bridge.gui.main_window import MainWindow
-
-    env_settings = FakeEnvSettings()
-    context = _window_context(tmp_path, env_settings=env_settings)
-    window = MainWindow(context)
-    window.environment_panel.mqtt_host_input.setText("mqtt.saved.local")
-    window.environment_panel.http_port_input.setValue(9091)
-
-    window.environment_panel.save_requested.emit()
-
-    assert env_settings.saved_mqtt.host == "mqtt.saved.local"
-    assert env_settings.saved_http.port == 9091
-    assert window.diagnostics_panel.http_endpoint_value.text() == "localhost:9091"
-    assert window.status_strip.bridge_value.text() == (
-        "Settings saved - restart backend required"
-    )
 
 
 def test_gui_threat_panel_renders_valid_and_invalid_images(qt_app):
@@ -424,19 +400,6 @@ class FakeMqttClient:
         pass
 
 
-class FakeEnvSettings:
-    def __init__(self):
-        self.saved_mqtt = None
-        self.saved_http = None
-        self.config = None
-
-    def save_mqtt_http(self, mqtt, http):
-        self.saved_mqtt = mqtt
-        self.saved_http = http
-        self.config = replace(self.config, mqtt=mqtt, http=http)
-        return self.config
-
-
 class FakeInferenceService:
     def __init__(self, frame):
         self.frame = frame
@@ -465,13 +428,10 @@ def _jpeg_bytes() -> bytes:
     return output.getvalue()
 
 
-def _window_context(tmp_path, env_settings=None):
+def _window_context(tmp_path):
     config = _config(str(tmp_path / "smart-home-bridge.log"))
-    if env_settings is not None:
-        env_settings.config = config
     context = create_gui_bridge_context(
         config,
-        env_settings=env_settings,
         door_gateway_factory=lambda _: None,
     )
     context.threat_scan_service.camera_client = FakeCameraClient(_jpeg_bytes())

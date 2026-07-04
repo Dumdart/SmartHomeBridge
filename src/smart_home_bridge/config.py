@@ -96,6 +96,10 @@ def load_config(dotenv_path: str | None = None, override: bool = False) -> app_c
     return _config_from_mapping(os.environ, require_mqtt_credentials=True)
 
 
+def load_config_from_environment() -> app_config:
+    return _config_from_mapping(os.environ, require_mqtt_credentials=True)
+
+
 def load_loxberry_config(
     home_dir: str | Path | None = None,
     plugin_config_dir: str | Path | None = None,
