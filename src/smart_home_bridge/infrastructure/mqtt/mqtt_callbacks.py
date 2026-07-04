@@ -11,11 +11,12 @@ class mqtt_callbacks(ABC):
         pass
     
     @abstractmethod
-    def on_disconnect(self, client, userdata, rc, properties=None):
-        print("Disconnected with code %s." % rc)
+    def on_disconnect(self, client, userdata, disconnect_flags, reason_code=None, properties=None):
+        code = reason_code if reason_code is not None else disconnect_flags
+        print("Disconnected with code %s." % code)
 
     @abstractmethod
-    def on_publish(self, client, userdata, mid, properties=None):
+    def on_publish(self, client, userdata, mid, reason_code=None, properties=None):
         print("Publish: " + str(mid))
 
     @abstractmethod

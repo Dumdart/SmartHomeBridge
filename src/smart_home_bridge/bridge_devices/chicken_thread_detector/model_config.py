@@ -1,3 +1,4 @@
+from smart_home_bridge.config import DEFAULT_CHICKEN_THREAT_MODEL_PATH
 from smart_home_bridge.models import ChickenThreadModelConfig
 
 MODEL_CLASS_NAMES = (
@@ -33,7 +34,7 @@ RISK_BY_LABEL = {
 
 
 def default_model_config(
-    model_path: str = "src/smart_home_bridge/models/chicken_threat_detector_best.pt",
+    model_path: str = DEFAULT_CHICKEN_THREAT_MODEL_PATH,
 ) -> ChickenThreadModelConfig:
     return ChickenThreadModelConfig(
         model_path=model_path,

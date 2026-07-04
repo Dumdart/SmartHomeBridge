@@ -1,6 +1,7 @@
 import json
 
 from smart_home_bridge.config import (
+    DEFAULT_CHICKEN_THREAT_MODEL_PATH,
     load_config,
     load_config_from_environment,
     load_loxberry_config,
@@ -156,6 +157,7 @@ def test_load_config_reads_bridge_device_settings(tmp_path):
 
 def test_load_config_disables_chicken_threat_by_default(tmp_path, monkeypatch):
     monkeypatch.delenv("CHICKEN_THREAT_ENABLED", raising=False)
+    monkeypatch.delenv("CHICKEN_THREAT_MODEL_PATH", raising=False)
     env_path = tmp_path / ".env"
     env_path.write_text(
         "\n".join(
@@ -175,6 +177,7 @@ def test_load_config_disables_chicken_threat_by_default(tmp_path, monkeypatch):
     config = load_config(str(env_path), override=True)
 
     assert config.chicken_threat.enabled is False
+    assert config.chicken_threat.model_path == DEFAULT_CHICKEN_THREAT_MODEL_PATH
 
 
 def test_load_config_requires_door_api_key(tmp_path, monkeypatch):

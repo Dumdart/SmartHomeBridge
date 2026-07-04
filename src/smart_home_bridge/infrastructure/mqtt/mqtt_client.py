@@ -9,7 +9,16 @@ from smart_home_bridge.config import MqttConfig
 class MqttClient:
     def __init__(self, mqtt_config: MqttConfig):
         self.config = mqtt_config
-        self.client = paho.Client(client_id="", userdata=None, protocol=paho.MQTTv5)
+        callback_api_version = getattr(paho, "CallbackAPIVersion", None)
+        if callback_api_version is None:
+            self.client = paho.Client(client_id="", userdata=None, protocol=paho.MQTTv5)
+        else:
+            self.client = paho.Client(
+                callback_api_version=callback_api_version.VERSION2,
+                client_id="",
+                userdata=None,
+                protocol=paho.MQTTv5,
+            )
 
     async def connect(self, on_connect: Callable | None = None):
         if on_connect:

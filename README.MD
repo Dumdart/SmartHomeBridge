@@ -111,7 +111,7 @@ The chicken threat detector can run as an independent backend pipeline:
 ```text
 ESP32-CAM /jpg
    -> backend camera client fetches JPEG bytes
-   -> local YOLO inference with chicken_threat_detector_best.pt
+   -> local YOLO inference with chicken_threat_detector_best_v3.pt
    -> danger scoring
    -> MQTT detector assessment publish
 ```
@@ -131,7 +131,8 @@ Configure the detector with:
 * `CAMERA_MAX_JPEG_BYTES`: maximum accepted camera JPEG response size
 * `CAMERA_AUTH_TOKEN`: bearer token sent to ESP32-CAM `/jpg` and `/health`
 * `CHICKEN_THREAT_ENABLED`: set to `true` to start backend polling
-* `CHICKEN_THREAT_MODEL_PATH`: local YOLO model path
+* `CHICKEN_THREAT_MODEL_PATH`: local YOLO model path. If unset, the packaged
+  `chicken_threat_detector_best_v3.pt` model is used.
 * `CHICKEN_THREAT_POLL_INTERVAL_SECONDS`: seconds between camera frames
 
 Detector assessments are published on the detector MQTT topic, for example
@@ -195,10 +196,10 @@ pytest
 docker compose up -d
 ```
 
-Docker runs only the bridge service logic. The Dockerfile installs the base
-package without the optional PySide6 GUI dependencies, and the container command
-is `smart-home-bridge`. Start the GUI locally with `smart-home-bridge-gui` when you need
-desktop controls or diagnostics.
+Docker runs only the bridge service logic. The Dockerfile installs backend
+inference dependencies but not the optional PySide6 GUI dependencies, and the
+container command is `smart-home-bridge`. Start the GUI locally with
+`smart-home-bridge-gui` when you need desktop controls or diagnostics.
 
 Build the image directly:
 

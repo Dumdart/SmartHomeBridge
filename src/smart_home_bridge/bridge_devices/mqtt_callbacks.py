@@ -35,10 +35,11 @@ class BridgeDeviceMqttCallbacks(mqtt_callbacks):
     def on_connect(self, client, userdata, flags, rc, properties=None):
         print("CONNACK received with code %s." % rc)
 
-    def on_disconnect(self, client, userdata, rc, properties=None):
-        print("Disconnected with code %s." % rc)
+    def on_disconnect(self, client, userdata, disconnect_flags, reason_code=None, properties=None):
+        code = reason_code if reason_code is not None else disconnect_flags
+        print("Disconnected with code %s." % code)
 
-    def on_publish(self, client, userdata, mid, properties=None):
+    def on_publish(self, client, userdata, mid, reason_code=None, properties=None):
         print("Publish: " + str(mid))
 
     def on_unsubscribe(self, client, userdata, mid, properties=None):

@@ -6,6 +6,8 @@ build-backend = "setuptools.build_meta"
 name = "smart-home-bridge"
 version = "0.1.0"
 description = "A bridge for connecting smart home systems to device integrations"
+readme = "README.MD"
+license = "MIT"
 requires-python = ">=3.11"
 dependencies = [
     "paho-mqtt",
@@ -35,3 +37,6 @@ smart-home-bridge-gui = "smart_home_bridge.gui:run"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"smart_home_bridge.models.model" = ["chicken_threat_detector_best_v3.pt"]

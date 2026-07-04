@@ -4,9 +4,16 @@ import re
 from collections.abc import Mapping
 from configparser import ConfigParser
 from dataclasses import dataclass, field
+from importlib.resources import files
 from pathlib import Path
 
 from dotenv import load_dotenv
+
+DEFAULT_CHICKEN_THREAT_MODEL_PATH = str(
+    files("smart_home_bridge.models.model").joinpath(
+        "chicken_threat_detector_best_v3.pt"
+    )
+)
 
 
 @dataclass(frozen=True)
@@ -45,7 +52,7 @@ class CameraConfig:
 @dataclass(frozen=True)
 class ChickenThreatConfig:
     enabled: bool = False
-    model_path: str = "src/smart_home_bridge/models/chicken_threat_detector_best.pt"
+    model_path: str = DEFAULT_CHICKEN_THREAT_MODEL_PATH
     poll_interval_seconds: float = 10.0
 
 
@@ -154,7 +161,7 @@ def _config_from_mapping(
             model_path=_get(
                 values,
                 "CHICKEN_THREAT_MODEL_PATH",
-                "src/smart_home_bridge/models/chicken_threat_detector_best.pt",
+                DEFAULT_CHICKEN_THREAT_MODEL_PATH,
             ),
             poll_interval_seconds=_float(
                 values,
