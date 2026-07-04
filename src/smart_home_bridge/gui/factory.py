@@ -9,6 +9,13 @@ from smart_home_bridge.bridge_devices.chicken_thread_detector import (
 from smart_home_bridge.bridge_devices.registry import create_bridge_device_compositions
 from smart_home_bridge.composition import create_bridge_composition
 from smart_home_bridge.config import DoorApiConfig, app_config
+from smart_home_bridge.gui.control import (
+    GuiBackendControl,
+    GuiThreatDiagnosticControl,
+    LocalBackendControl,
+    LocalThreatDiagnosticControl,
+)
+from smart_home_bridge.gui.observer import GuiBackendObserver, LocalCompositionObserver
 from smart_home_bridge.gui.threat_detection import GuiThreatScanService
 from smart_home_bridge.services import ActivityLog, EnvSettingsService
 
@@ -25,6 +32,9 @@ class GuiBridgeContext:
     detector_topic: str
     env_settings: EnvSettingsService
     activity_log: ActivityLog
+    observer: GuiBackendObserver
+    backend_control: GuiBackendControl
+    threat_diagnostics: GuiThreatDiagnosticControl
 
 
 def create_gui_bridge_context(
@@ -43,20 +53,32 @@ def create_gui_bridge_context(
             ),
         )
 
+    threat_scan_service = GuiThreatScanService(
+        camera_client=composition.camera_client,
+        inference_service=composition.threat_inference_service,
+        detector_controller=composition.threat_detector_controller,
+        source=config.camera.host,
+    )
+    observer = LocalCompositionObserver(
+        config=config,
+        door=composition.door,
+        threat_detector=composition.threat_detector,
+        command_topic=composition.command_topic,
+        detector_topic=composition.detector_topic,
+    )
+
     return GuiBridgeContext(
         config=config,
         door=composition.door,
         door_controller=composition.door_controller,
         threat_detector=composition.threat_detector,
         threat_detector_controller=composition.threat_detector_controller,
-        threat_scan_service=GuiThreatScanService(
-            camera_client=composition.camera_client,
-            inference_service=composition.threat_inference_service,
-            detector_controller=composition.threat_detector_controller,
-            source=config.camera.host,
-        ),
+        threat_scan_service=threat_scan_service,
         command_topic=composition.command_topic,
         detector_topic=composition.detector_topic,
         env_settings=env_settings or EnvSettingsService(),
         activity_log=ActivityLog(config.log_file_path),
+        observer=observer,
+        backend_control=LocalBackendControl(composition.door_controller),
+        threat_diagnostics=LocalThreatDiagnosticControl(threat_scan_service),
     )

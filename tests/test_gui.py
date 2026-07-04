@@ -18,6 +18,7 @@ from smart_home_bridge.config import (
 from smart_home_bridge.core.command import command_result
 from smart_home_bridge.gui import run
 from smart_home_bridge.gui.factory import create_gui_bridge_context
+from smart_home_bridge.gui.observer import MqttStatusObserver
 from smart_home_bridge.bridge_devices.chicken_thread_detector.image_limits import (
     MAX_IMAGE_PIXELS,
 )
@@ -31,6 +32,10 @@ from smart_home_bridge.models import (
     Detection,
     DetectionFrame,
     ThreatLevel,
+)
+from smart_home_bridge.gui.view_model import (
+    GuiBridgeViewModel,
+    snapshot_from_config,
 )
 
 
@@ -96,6 +101,56 @@ def test_gui_context_controller_executes_commands():
 
     assert result.success is True
     assert context.door.position == door_position.OPEN
+
+
+def test_gui_observer_snapshot_formats_view_model():
+    assessment = DangerAssessment(
+        level=ThreatLevel.HIGH,
+        score=0.81,
+        detection_count=2,
+    )
+    snapshot = snapshot_from_config(
+        config=_config(),
+        door_state=door_position.OPEN.value,
+        threat_assessment=assessment,
+        command_topic="loxone/chicken-door/command",
+        detector_topic="loxone/chicken-thread-detector",
+        camera_health="Available",
+        backend_status="Ready",
+        last_activity_entries=("[2026-07-04 10:00:00] GUI started.",),
+    )
+
+    view_model = GuiBridgeViewModel.from_snapshot(snapshot)
+
+    assert view_model.door_tone == "warning"
+    assert view_model.threat_tone == "danger"
+    assert view_model.camera_health_tone == "good"
+    assert view_model.http_endpoint == "localhost:8080"
+    assert view_model.camera_endpoint == "esp32cam.local:80/jpg"
+    assert view_model.last_activity_entries == (
+        "[2026-07-04 10:00:00] GUI started.",
+    )
+
+
+def test_gui_mqtt_status_observer_updates_snapshot():
+    snapshot = snapshot_from_config(
+        config=_config(),
+        door_state=door_position.UNKNOWN.value,
+        threat_assessment=DangerAssessment(level=ThreatLevel.NONE, score=0.0),
+        command_topic="loxone/chicken-door/command",
+        detector_topic="loxone/chicken-thread-detector",
+    )
+    observer = MqttStatusObserver(snapshot)
+    assessment = DangerAssessment(level=ThreatLevel.LOW, score=0.25, detection_count=1)
+
+    observer.update_door_state(door_position.CLOSED.value)
+    observer.update_threat_assessment(assessment)
+    observer.update_camera_health("Unavailable")
+
+    updated = observer.snapshot()
+    assert updated.door_state == "closed"
+    assert updated.threat_assessment == assessment
+    assert updated.camera_health == "Unavailable"
 
 
 def test_gui_threat_scan_fetches_infers_scores_and_annotates_frame():
@@ -257,6 +312,20 @@ def test_gui_main_window_wires_door_commands(qt_app, tmp_path):
     assert window.status_strip.bridge_value.text() == "Ready"
 
 
+def test_gui_main_window_uses_backend_control_adapter(qt_app, tmp_path):
+    from smart_home_bridge.gui.main_window import MainWindow
+
+    context = _window_context(tmp_path)
+    control = FakeBackendControl(context.door, door_position.CLOSED)
+    context = replace(context, backend_control=control)
+    window = MainWindow(context)
+
+    window.door_panel.command_requested.emit("close_door")
+
+    assert control.commands == ["close_door"]
+    assert window.door_panel.state_value.text() == "closed"
+
+
 def test_gui_main_window_save_environment_uses_panel_values(qt_app, tmp_path):
     from smart_home_bridge.gui.main_window import MainWindow
 
@@ -271,6 +340,9 @@ def test_gui_main_window_save_environment_uses_panel_values(qt_app, tmp_path):
     assert env_settings.saved_mqtt.host == "mqtt.saved.local"
     assert env_settings.saved_http.port == 9091
     assert window.diagnostics_panel.http_endpoint_value.text() == "localhost:9091"
+    assert window.status_strip.bridge_value.text() == (
+        "Settings saved - restart backend required"
+    )
 
 
 def test_gui_threat_panel_renders_valid_and_invalid_images(qt_app):
@@ -293,6 +365,18 @@ class FakeCameraClient:
 
     def health(self):
         return True
+
+
+class FakeBackendControl:
+    def __init__(self, door, resulting_position):
+        self.door = door
+        self.resulting_position = resulting_position
+        self.commands = []
+
+    async def execute_door_command(self, command_name):
+        self.commands.append(command_name)
+        self.door.position = self.resulting_position
+        return command_result(data=self.resulting_position)
 
 
 class FakeEnvSettings:

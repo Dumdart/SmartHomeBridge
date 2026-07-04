@@ -10,8 +10,10 @@ from PySide6.QtWidgets import (
 )
 
 from smart_home_bridge.bridge_devices.chicken_door import door_position
-from smart_home_bridge.gui.factory import GuiBridgeContext, create_gui_bridge_context
+from smart_home_bridge.config import app_config
+from smart_home_bridge.gui.factory import GuiBridgeContext
 from smart_home_bridge.gui.styles import APP_STYLESHEET
+from smart_home_bridge.gui.view_model import GuiBridgeViewModel
 from smart_home_bridge.gui.widgets import (
     ActivityLogPanel,
     DiagnosticsPanel,
@@ -31,6 +33,7 @@ class MainWindow(QMainWindow):
         self.resize(1180, 820)
         self.setMinimumSize(920, 680)
         self.setStyleSheet(APP_STYLESHEET)
+        self._activity_entries: list[str] = []
 
         self.status_strip = StatusStrip()
         self.door_panel = DoorControlPanel()
@@ -87,7 +90,7 @@ class MainWindow(QMainWindow):
 
         try:
             result = asyncio.run(
-                self.context.door_controller.excecute_command(command_name)
+                self.context.backend_control.execute_door_command(command_name)
             )
         except Exception as exc:
             self._set_status("Command failed", "danger")
@@ -96,12 +99,11 @@ class MainWindow(QMainWindow):
 
         state = result.data
         if isinstance(state, door_position):
-            self._set_door_state(state.value)
+            self._refresh_status_labels()
 
         self._set_status("Ready", "good")
-        self._append_log(
-            f"{command_name} completed with state {self.context.door.position.value}."
-        )
+        state_value = state.value if isinstance(state, door_position) else str(state)
+        self._append_log(f"{command_name} completed with state {state_value}.")
 
     def _run_threat_scan(self):
         self._set_status("Running inference", "working")
@@ -111,7 +113,7 @@ class MainWindow(QMainWindow):
         self._set_status("Running inference", "working")
 
         try:
-            result = asyncio.run(self.context.threat_scan_service.scan_once())
+            result = asyncio.run(self.context.threat_diagnostics.run_scan_once())
         except Exception as exc:
             self._set_status("Inference failed", "danger")
             self._append_log(f"Threat inference failed: {exc}")
@@ -131,6 +133,10 @@ class MainWindow(QMainWindow):
 
     def _append_log(self, message: str):
         entry = self.context.activity_log.record(message)
+        self._activity_entries.append(entry)
+        update_entries = getattr(self.context.observer, "update_activity_entries", None)
+        if update_entries is not None:
+            update_entries(tuple(self._activity_entries[-50:]))
         self.activity_panel.append_entry(entry)
 
     def _populate_settings_fields(self):
@@ -149,93 +155,90 @@ class MainWindow(QMainWindow):
             self._append_log(f"Environment save failed: {exc}")
             return
 
-        previous_state = self.context.door.position
-        previous_assessment = self.context.threat_detector.assessment
-        self.context = create_gui_bridge_context(config, self.context.env_settings)
-        self.context.door.position = previous_state
-        self.context.threat_detector.assessment = previous_assessment
+        update_config = getattr(self.context.observer, "update_config", None)
+        if update_config is not None:
+            update_config(config)
+        self._update_observer_backend_status("Settings saved - restart backend required")
         self._refresh_status_labels()
         camera_healthy = self._refresh_camera_health(log=True)
         if camera_healthy:
-            self._set_status("Ready", "good")
-        self._append_log("Environment settings saved.")
+            self._set_status("Settings saved - restart backend required", "good")
+        self._append_log(
+            "Environment settings saved. Restart backend to apply runtime changes."
+        )
 
     def _refresh_status_labels(self):
-        self._set_door_state(self.context.door.position.value)
+        view_model = GuiBridgeViewModel.from_snapshot(self.context.observer.snapshot())
+        self._render_view_model(view_model)
+
+    def _render_view_model(self, view_model: GuiBridgeViewModel):
+        self.status_strip.set_door(view_model.door_state, view_model.door_tone)
+        self.door_panel.set_state(view_model.door_state, view_model.door_tone)
         self.diagnostics_panel.set_details(
-            mqtt_topic=self.context.command_topic,
-            detector_topic=self.context.detector_topic,
-            http_endpoint=self._http_endpoint(),
-            camera_endpoint=self._camera_endpoint(),
+            mqtt_topic=view_model.command_topic,
+            detector_topic=view_model.detector_topic,
+            http_endpoint=view_model.http_endpoint,
+            camera_endpoint=view_model.camera_endpoint,
         )
-        self._refresh_threat_labels()
+        self.status_strip.set_threat(view_model.threat_level, view_model.threat_tone)
+        self.threat_panel.set_assessment(
+            view_model.threat_level,
+            view_model.threat_score,
+            view_model.threat_count,
+            view_model.threat_tone,
+        )
+        self._set_camera_health(view_model.camera_health, view_model.camera_health_tone)
+        self._set_status(view_model.backend_status, view_model.backend_status_tone)
 
     def _refresh_camera_health(self, log: bool = False) -> bool:
         self._set_status("Checking camera", "working")
-        is_healthy = self.context.threat_scan_service.camera_client.health()
+        is_healthy = self.context.threat_diagnostics.camera_health()
         if is_healthy:
-            self._set_camera_health("Available", "good")
+            self._update_observer_camera_health("Available")
+            self._refresh_status_labels()
             self._set_status("Ready", "good")
             if log:
-                self._append_log(f"Camera health check passed: {self._camera_health_endpoint()}")
+                self._append_log(
+                    f"Camera health check passed: {self._camera_health_endpoint()}"
+                )
             return True
 
-        self._set_camera_health("Unavailable", "danger")
+        self._update_observer_camera_health("Unavailable")
+        self._refresh_status_labels()
         self._set_status("Camera unavailable", "danger")
         if log:
-            self._append_log(f"Camera health check failed: {self._camera_health_endpoint()}")
+            self._append_log(
+                f"Camera health check failed: {self._camera_health_endpoint()}"
+            )
         return False
 
     def _refresh_threat_labels(self):
-        assessment = self.context.threat_detector.assessment
-        tone = self._threat_tone(assessment.level.value)
-        self.status_strip.set_threat(assessment.level.value, tone)
-        self.threat_panel.set_assessment(
-            assessment.level.value,
-            assessment.score,
-            assessment.detection_count,
-            tone,
-        )
+        self._refresh_status_labels()
 
     def _set_status(self, message: str, tone: str):
         self.status_strip.set_bridge(message, tone)
-
-    def _set_door_state(self, value: str):
-        tone = self._door_tone(value)
-        self.status_strip.set_door(value, tone)
-        self.door_panel.set_state(value, tone)
 
     def _set_camera_health(self, value: str, tone: str):
         self.status_strip.set_camera(value, tone)
         self.diagnostics_panel.set_camera_health(value, tone)
 
-    def _door_tone(self, value: str) -> str:
-        if value == door_position.OPEN.value:
-            return "warning"
-        if value == door_position.CLOSED.value:
-            return "good"
-        return "neutral"
-
-    def _threat_tone(self, value: str) -> str:
-        if value in {"critical", "high"}:
-            return "danger"
-        if value == "medium":
-            return "warning"
-        if value == "low":
-            return "notice"
-        return "good"
-
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self.threat_panel.update_inference_pixmap()
 
-    def _http_endpoint(self) -> str:
-        return f"{self.context.config.http.host}:{self.context.config.http.port}"
-
-    def _camera_endpoint(self) -> str:
-        config = self.context.config.camera
-        return f"{config.host}:{config.port}{config.jpg_endpoint}"
-
     def _camera_health_endpoint(self) -> str:
-        config = self.context.config.camera
+        config = self._current_config().camera
         return f"http://{config.host}:{config.port}/{config.health_endpoint.lstrip('/')}"
+
+    def _current_config(self) -> app_config:
+        return getattr(self.context.observer, "config", self.context.config)
+
+    def _update_observer_camera_health(self, value: str):
+        update_health = getattr(self.context.observer, "update_camera_health", None)
+        if update_health is not None:
+            update_health(value)
+
+    def _update_observer_backend_status(self, value: str):
+        update_status = getattr(self.context.observer, "update_backend_status", None)
+        if update_status is not None:
+            update_status(value)
