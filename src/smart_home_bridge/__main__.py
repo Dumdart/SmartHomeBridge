@@ -1,12 +1,15 @@
 import asyncio
+import json
+import os
 from collections.abc import Callable
 from typing import Any
 
 from smart_home_bridge.bridge_devices.runtime import BridgeDeviceRuntime
 from smart_home_bridge.composition import BridgeComposition, create_bridge_composition
-from smart_home_bridge.config import MqttConfig, app_config, load_config
+from smart_home_bridge.config import MqttConfig, app_config, load_config, load_loxberry_config
 from smart_home_bridge.infrastructure.mqtt.mqtt_client import MqttClient
 from smart_home_bridge.infrastructure.mqtt.mqtt_gate import MqttAdapter
+from smart_home_bridge.runtime_status import build_backend_status
 
 
 class App:
@@ -38,6 +41,7 @@ class App:
         for runtime in self.device_runtimes:
             await runtime.start()
 
+    async def wait_forever(self):
         await asyncio.Event().wait()
 
     async def stop(self):
@@ -58,21 +62,46 @@ class App:
             handles.update(runtime.handles)
         return handles
 
+    def status_snapshot(self) -> dict[str, Any]:
+        return build_backend_status(self.config, self.device_runtimes)
+
 
 async def main():
-    app_config = load_config()
+    app_config = load_app_config()
     application = App(app_config)
 
     try:
         await application.start()
+        await application.wait_forever()
     except Exception as e:
         print(f"Error occurred: {e}")
     finally:
         await application.stop()
 
 
+def load_app_config() -> app_config:
+    source = os.getenv("SMART_HOME_BRIDGE_CONFIG_SOURCE", "env").strip().lower()
+    if source == "loxberry":
+        return load_loxberry_config()
+    if source == "env":
+        return load_config()
+    raise ValueError(
+        "SMART_HOME_BRIDGE_CONFIG_SOURCE must be 'env' or 'loxberry'"
+    )
+
+
 def run():
     asyncio.run(main())
+
+
+def status():
+    application = App(load_app_config())
+    print(json.dumps(application.status_snapshot(), indent=2, sort_keys=True))
+
+
+def config_check():
+    App(load_app_config())
+    print(json.dumps({"ok": True}, sort_keys=True))
 
 
 if __name__ == "__main__":

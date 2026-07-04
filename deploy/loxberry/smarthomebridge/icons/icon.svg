@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="SmartHomeBridge">
+  <rect width="64" height="64" rx="8" fill="#1f2937"/>
+  <path d="M14 36h36v16H14z" fill="#f9fafb"/>
+  <path d="M10 36 32 16l22 20" fill="none" stroke="#f59e0b" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M25 52V38h14v14" fill="#374151"/>
+  <circle cx="47" cy="17" r="6" fill="#22c55e"/>
+</svg>

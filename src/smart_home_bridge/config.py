@@ -1,5 +1,10 @@
+import json
 import os
+import re
+from collections.abc import Mapping
+from configparser import ConfigParser
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -88,79 +93,104 @@ class app_config:
 
 def load_config(dotenv_path: str | None = None, override: bool = False) -> app_config:
     load_dotenv(dotenv_path=dotenv_path, override=override)
+    return _config_from_mapping(os.environ)
 
+
+def load_loxberry_config(
+    home_dir: str | Path | None = None,
+    plugin_config_dir: str | Path | None = None,
+) -> app_config:
+    loxberry_home = Path(home_dir or _required_env("LBHOMEDIR"))
+    loxberry_plugin_config = Path(plugin_config_dir or _required_env("LBPCONFIG"))
+    mqtt_config_path = loxberry_home / "config" / "system" / "general.json"
+    bridge_config_path = (
+        loxberry_plugin_config / "smarthomebridge" / "smart-home-bridge.ini"
+    )
+
+    mqtt_settings = _read_loxberry_mqtt_settings(mqtt_config_path)
+    bridge_settings = _read_ini_settings(bridge_config_path)
+    values = {**bridge_settings, **mqtt_settings}
+    return _config_from_mapping(values)
+
+
+def _config_from_mapping(values: Mapping[str, str]) -> app_config:
     return app_config(
         door_api=DoorApiConfig(
-            api_key=_required("DOOR_API_KEY"),
-            device_id=_required("DOOR_DEVICE_ID"),
+            api_key=_required(values, "DOOR_API_KEY"),
+            device_id=_required(values, "DOOR_DEVICE_ID"),
         ),
         mqtt=MqttConfig(
-            host=_required("MQTT_HOST"),
-            port=_int("MQTT_PORT", 1883),
-            username=_required("MQTT_USERNAME"),
-            password=_required("MQTT_PASSWORD"),
-            base_topic=_required("MQTT_BASE_TOPIC"),
-            use_tls=_bool("MQTT_USE_TLS", False),
+            host=_required(values, "MQTT_HOST"),
+            port=_int(values, "MQTT_PORT", 1883),
+            username=_required(values, "MQTT_USERNAME"),
+            password=_required(values, "MQTT_PASSWORD"),
+            base_topic=_required(values, "MQTT_BASE_TOPIC"),
+            use_tls=_bool(values, "MQTT_USE_TLS", False),
         ),
         http=HttpConfig(
-            host=_get("HTTP_HOST", "0.0.0.0"),
-            port=_int("HTTP_PORT", 8080),
+            host=_get(values, "HTTP_HOST", "0.0.0.0"),
+            port=_int(values, "HTTP_PORT", 8080),
         ),
-        log_level=_get("LOG_LEVEL", "INFO"),
-        log_file_path=_get("LOG_FILE_PATH", "logs/smart-home-bridge.log"),
+        log_level=_get(values, "LOG_LEVEL", "INFO"),
+        log_file_path=_get(values, "LOG_FILE_PATH", "logs/smart-home-bridge.log"),
         camera=CameraConfig(
-            host=_get("CAMERA_HOST", "192.168.1.42"),
-            port=_int("CAMERA_PORT", 80),
-            jpg_endpoint=_get("CAMERA_JPG_ENDPOINT", "/jpg"),
-            health_endpoint=_get("CAMERA_HEALTH_ENDPOINT", "/health"),
-            timeout_seconds=_float("CAMERA_TIMEOUT_SECONDS", 5.0),
-            max_jpeg_bytes=_int("CAMERA_MAX_JPEG_BYTES", 2_000_000),
-            auth_token=_get("CAMERA_AUTH_TOKEN", ""),
+            host=_get(values, "CAMERA_HOST", "192.168.1.42"),
+            port=_int(values, "CAMERA_PORT", 80),
+            jpg_endpoint=_get(values, "CAMERA_JPG_ENDPOINT", "/jpg"),
+            health_endpoint=_get(values, "CAMERA_HEALTH_ENDPOINT", "/health"),
+            timeout_seconds=_float(values, "CAMERA_TIMEOUT_SECONDS", 5.0),
+            max_jpeg_bytes=_int(values, "CAMERA_MAX_JPEG_BYTES", 2_000_000),
+            auth_token=_get(values, "CAMERA_AUTH_TOKEN", ""),
         ),
         chicken_threat=ChickenThreatConfig(
-            enabled=_bool("CHICKEN_THREAT_ENABLED", False),
+            enabled=_bool(values, "CHICKEN_THREAT_ENABLED", False),
             model_path=_get(
+                values,
                 "CHICKEN_THREAT_MODEL_PATH",
                 "src/smart_home_bridge/models/chicken_threat_detector_best.pt",
             ),
-            poll_interval_seconds=_float("CHICKEN_THREAT_POLL_INTERVAL_SECONDS", 10.0),
+            poll_interval_seconds=_float(
+                values,
+                "CHICKEN_THREAT_POLL_INTERVAL_SECONDS",
+                10.0,
+            ),
         ),
-        devices=_bridge_devices_config(),
+        devices=_bridge_devices_config(values),
     )
 
 
-def _get(name: str, default: str) -> str:
-    value = os.getenv(name)
+def _get(values: Mapping[str, str], name: str, default: str) -> str:
+    value = values.get(name)
     if value is None or value.strip() == "":
         return default
     return value.strip()
 
 
-def _required(name: str) -> str:
-    value = os.getenv(name)
+def _required(values: Mapping[str, str], name: str) -> str:
+    value = values.get(name)
     if value is None or value.strip() == "":
         raise ValueError(f"Missing required environment variable: {name}")
     return value.strip()
 
 
-def _int(name: str, default: int) -> int:
-    value = _get(name, str(default))
+def _int(values: Mapping[str, str], name: str, default: int) -> int:
+    value = _get(values, name, str(default))
     try:
         return int(value)
     except ValueError as exc:
         raise ValueError(f"Environment variable {name} must be an integer") from exc
 
 
-def _float(name: str, default: float) -> float:
-    value = _get(name, str(default))
+def _float(values: Mapping[str, str], name: str, default: float) -> float:
+    value = _get(values, name, str(default))
     try:
         return float(value)
     except ValueError as exc:
         raise ValueError(f"Environment variable {name} must be a number") from exc
 
 
-def _bool(name: str, default: bool) -> bool:
-    value = os.getenv(name)
+def _bool(values: Mapping[str, str], name: str, default: bool) -> bool:
+    value = values.get(name)
     if value is None or value.strip() == "":
         return default
 
@@ -173,16 +203,20 @@ def _bool(name: str, default: bool) -> bool:
     raise ValueError(f"Environment variable {name} must be a boolean")
 
 
-def _csv(name: str, default: tuple[str, ...]) -> tuple[str, ...]:
-    value = os.getenv(name)
+def _csv(values: Mapping[str, str], name: str, default: tuple[str, ...]) -> tuple[str, ...]:
+    value = values.get(name)
     if value is None or value.strip() == "":
         return default
 
     return tuple(part.strip() for part in value.split(",") if part.strip())
 
 
-def _optional_int(name: str, default: int | None = None) -> int | None:
-    value = os.getenv(name)
+def _optional_int(
+    values: Mapping[str, str],
+    name: str,
+    default: int | None = None,
+) -> int | None:
+    value = values.get(name)
     if value is None or value.strip() == "":
         return default
 
@@ -192,8 +226,9 @@ def _optional_int(name: str, default: int | None = None) -> int | None:
         raise ValueError(f"Environment variable {name} must be an integer") from exc
 
 
-def _bridge_devices_config() -> BridgeDevicesConfig:
+def _bridge_devices_config(values: Mapping[str, str]) -> BridgeDevicesConfig:
     enabled = _csv(
+        values,
         "BRIDGE_DEVICES_ENABLED",
         ("chicken_door", "chicken_thread_detector"),
     )
@@ -203,28 +238,41 @@ def _bridge_devices_config() -> BridgeDevicesConfig:
             "chicken_door": BridgeDeviceConfig(
                 key="chicken_door",
                 enabled="chicken_door" in enabled,
-                device_id=_optional_int("CHICKEN_DOOR_BRIDGE_ID", 1),
-                name=_get("CHICKEN_DOOR_BRIDGE_NAME", "door"),
+                device_id=_optional_int(values, "CHICKEN_DOOR_BRIDGE_ID", 1),
+                name=_get(values, "CHICKEN_DOOR_BRIDGE_NAME", "door"),
                 topics={
                     "command": _get(
+                        values,
                         "CHICKEN_DOOR_COMMAND_TOPIC",
                         "chicken-door/command",
                     ),
-                    "status": _get("CHICKEN_DOOR_STATUS_TOPIC", "chicken-door/status"),
+                    "status": _get(
+                        values,
+                        "CHICKEN_DOOR_STATUS_TOPIC",
+                        "chicken-door/status",
+                    ),
                     "status_code": _get(
+                        values,
                         "CHICKEN_DOOR_STATUS_CODE_TOPIC",
                         "chicken-door/status_code",
                     ),
-                    "fault": _get("CHICKEN_DOOR_FAULT_TOPIC", "chicken-door/fault"),
+                    "fault": _get(
+                        values,
+                        "CHICKEN_DOOR_FAULT_TOPIC",
+                        "chicken-door/fault",
+                    ),
                     "connected": _get(
+                        values,
                         "CHICKEN_DOOR_CONNECTED_TOPIC",
                         "chicken-door/connected",
                     ),
                     "battery": _get(
+                        values,
                         "CHICKEN_DOOR_BATTERY_TOPIC",
                         "chicken-door/battery",
                     ),
                     "light_level": _get(
+                        values,
                         "CHICKEN_DOOR_LIGHT_LEVEL_TOPIC",
                         "chicken-door/light_level",
                     ),
@@ -233,13 +281,19 @@ def _bridge_devices_config() -> BridgeDevicesConfig:
             "chicken_thread_detector": BridgeDeviceConfig(
                 key="chicken_thread_detector",
                 enabled="chicken_thread_detector" in enabled,
-                device_id=_optional_int("CHICKEN_THREAD_DETECTOR_BRIDGE_ID", 2),
+                device_id=_optional_int(
+                    values,
+                    "CHICKEN_THREAD_DETECTOR_BRIDGE_ID",
+                    2,
+                ),
                 name=_get(
+                    values,
                     "CHICKEN_THREAD_DETECTOR_BRIDGE_NAME",
                     "chicken_thread_detector",
                 ),
                 topics={
                     "detections": _get(
+                        values,
                         "CHICKEN_THREAD_DETECTOR_TOPIC",
                         "chicken-thread-detector",
                     ),
@@ -247,3 +301,84 @@ def _bridge_devices_config() -> BridgeDevicesConfig:
             ),
         },
     )
+
+
+def _required_env(name: str) -> str:
+    value = os.getenv(name)
+    if value is None or value.strip() == "":
+        raise ValueError(f"Missing required environment variable: {name}")
+    return value.strip()
+
+
+def _read_ini_settings(path: Path) -> dict[str, str]:
+    if not path.exists():
+        raise ValueError(f"Missing LoxBerry bridge config file: {path}")
+
+    parser = ConfigParser()
+    parser.optionxform = str
+    parser.read(path)
+    settings: dict[str, str] = {}
+    for section in parser.sections():
+        for key, value in parser.items(section):
+            settings[key.upper()] = value.strip()
+    return settings
+
+
+def _read_loxberry_mqtt_settings(path: Path) -> dict[str, str]:
+    if not path.exists():
+        raise ValueError(f"Missing LoxBerry MQTT config file: {path}")
+
+    data = json.loads(path.read_text())
+    flattened = _flatten_json_keys(data)
+    return {
+        "MQTT_HOST": _first(
+            flattened,
+            "mqtthost",
+            "mqttbrokerhost",
+            "brokerhost",
+            "host",
+        ),
+        "MQTT_PORT": _first(flattened, "mqttport", "mqttbrokerport", "brokerport", "port"),
+        "MQTT_USERNAME": _first(
+            flattened,
+            "mqttusername",
+            "mqttuser",
+            "username",
+            "user",
+        ),
+        "MQTT_PASSWORD": _first(flattened, "mqttpassword", "mqttpass", "password", "pass"),
+        "MQTT_USE_TLS": _first(flattened, "mqttusetls", "mqtttls", "usetls", default="false"),
+    }
+
+
+def _flatten_json_keys(value, prefix: str = "") -> dict[str, str]:
+    items: dict[str, str] = {}
+    if isinstance(value, dict):
+        for key, nested_value in value.items():
+            normalized_key = _normalize_key(str(key))
+            combined_key = f"{prefix}{normalized_key}" if prefix else normalized_key
+            items.update(_flatten_json_keys(nested_value, combined_key))
+            items.setdefault(normalized_key, _scalar_to_str(nested_value))
+    return items
+
+
+def _first(values: Mapping[str, str], *names: str, default: str | None = None) -> str:
+    for name in names:
+        value = values.get(_normalize_key(name))
+        if value is not None and value.strip() != "":
+            return value.strip()
+    if default is not None:
+        return default
+    raise ValueError(f"Missing LoxBerry MQTT setting: {' or '.join(names)}")
+
+
+def _normalize_key(value: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", value.lower())
+
+
+def _scalar_to_str(value) -> str:
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, int | float | str):
+        return str(value)
+    return ""

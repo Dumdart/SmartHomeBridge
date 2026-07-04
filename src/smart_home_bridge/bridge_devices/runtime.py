@@ -48,22 +48,41 @@ class BridgeDeviceRuntime:
     mqtt_bindings: tuple[BridgeDeviceMqttBinding, ...] = ()
     background_services: tuple[BackgroundService, ...] = ()
     handles: dict[str, Any] = field(default_factory=dict)
+    mqtt_running: bool = False
+    background_services_running: bool = False
 
     @property
     def mqtt_gates(self) -> tuple[MqttGate, ...]:
         return tuple(binding.gate for binding in self.mqtt_bindings)
 
+    @property
+    def is_running(self) -> bool:
+        return self.mqtt_running or self.background_services_running
+
     async def start(self):
         for binding in self.mqtt_bindings:
             await binding.gate.start()
             await binding.gate.subscribe()
+        self.mqtt_running = True
 
         for service in self.background_services:
             await service.start()
+        self.background_services_running = any(
+            _service_is_running(service) for service in self.background_services
+        )
 
     async def stop(self):
         for service in reversed(self.background_services):
             await service.stop()
+        self.background_services_running = False
 
         for binding in reversed(self.mqtt_bindings):
             await binding.gate.stop()
+        self.mqtt_running = False
+
+
+def _service_is_running(service: BackgroundService) -> bool:
+    is_running = getattr(service, "is_running", None)
+    if isinstance(is_running, bool):
+        return is_running
+    return True

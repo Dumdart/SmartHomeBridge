@@ -39,6 +39,10 @@ class ChickenThreatDetectionPipeline:
         self._task: asyncio.Task | None = None
 
     @property
+    def is_running(self) -> bool:
+        return self._task is not None and not self._task.done()
+
+    @property
     def camera_client(self) -> CameraClientInterface:
         return self.scan_service.camera_client
 

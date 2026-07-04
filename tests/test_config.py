@@ -1,4 +1,6 @@
-from smart_home_bridge.config import load_config
+import json
+
+from smart_home_bridge.config import load_config, load_loxberry_config
 
 
 def test_load_config_reads_log_file_path(tmp_path):
@@ -185,3 +187,56 @@ def test_load_config_requires_door_device_id(tmp_path, monkeypatch):
         assert str(exc) == "Missing required environment variable: DOOR_DEVICE_ID"
     else:
         raise AssertionError("Expected missing DOOR_DEVICE_ID to be rejected")
+
+
+def test_load_loxberry_config_reads_mqtt_json_and_plugin_ini(tmp_path):
+    home_dir = tmp_path / "loxberry"
+    plugin_config_dir = tmp_path / "config"
+    mqtt_dir = home_dir / "config" / "system"
+    bridge_dir = plugin_config_dir / "smarthomebridge"
+    mqtt_dir.mkdir(parents=True)
+    bridge_dir.mkdir(parents=True)
+    (mqtt_dir / "general.json").write_text(
+        json.dumps(
+            {
+                "mqtt": {
+                    "host": "loxberry-mqtt.local",
+                    "port": 1884,
+                    "username": "mqtt-user",
+                    "password": "mqtt-password",
+                    "use_tls": True,
+                }
+            }
+        )
+    )
+    (bridge_dir / "smart-home-bridge.ini").write_text(
+        "\n".join(
+            [
+                "[smart-home-bridge]",
+                "DOOR_API_KEY=api-key",
+                "DOOR_DEVICE_ID=device-id",
+                "MQTT_BASE_TOPIC=smart-home-bridge",
+                "BRIDGE_DEVICES_ENABLED=chicken_thread_detector",
+                "CAMERA_HOST=esp32cam.local",
+                "CAMERA_PORT=81",
+                "CHICKEN_THREAT_ENABLED=true",
+                "CHICKEN_THREAT_POLL_INTERVAL_SECONDS=12.5",
+                "LOG_LEVEL=DEBUG",
+            ]
+        )
+        + "\n"
+    )
+
+    config = load_loxberry_config(home_dir, plugin_config_dir)
+
+    assert config.mqtt.host == "loxberry-mqtt.local"
+    assert config.mqtt.port == 1884
+    assert config.mqtt.username == "mqtt-user"
+    assert config.mqtt.password == "mqtt-password"
+    assert config.mqtt.base_topic == "smart-home-bridge"
+    assert config.mqtt.use_tls is True
+    assert config.devices.enabled == ("chicken_thread_detector",)
+    assert config.camera.host == "esp32cam.local"
+    assert config.camera.port == 81
+    assert config.chicken_threat.enabled is True
+    assert config.chicken_threat.poll_interval_seconds == 12.5
