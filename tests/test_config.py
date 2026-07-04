@@ -240,3 +240,43 @@ def test_load_loxberry_config_reads_mqtt_json_and_plugin_ini(tmp_path):
     assert config.camera.port == 81
     assert config.chicken_threat.enabled is True
     assert config.chicken_threat.poll_interval_seconds == 12.5
+
+
+def test_load_loxberry_config_accepts_gateway_mqtt_fields_without_credentials(tmp_path):
+    home_dir = tmp_path / "loxberry"
+    plugin_config_dir = tmp_path / "config"
+    mqtt_dir = home_dir / "config" / "system"
+    bridge_dir = plugin_config_dir / "smarthomebridge"
+    mqtt_dir.mkdir(parents=True)
+    bridge_dir.mkdir(parents=True)
+    (mqtt_dir / "general.json").write_text(
+        json.dumps(
+            {
+                "Mqtt": {
+                    "Brokerhost": "loxberry-mqtt.local",
+                    "Brokerport": "1883",
+                    "Brokeruser": "",
+                    "Brokerpass": "",
+                    "Udpinport": "11884",
+                }
+            }
+        )
+    )
+    (bridge_dir / "smart-home-bridge.ini").write_text(
+        "\n".join(
+            [
+                "[smart-home-bridge]",
+                "DOOR_API_KEY=api-key",
+                "DOOR_DEVICE_ID=device-id",
+                "MQTT_BASE_TOPIC=smart-home-bridge",
+            ]
+        )
+        + "\n"
+    )
+
+    config = load_loxberry_config(home_dir, plugin_config_dir)
+
+    assert config.mqtt.host == "loxberry-mqtt.local"
+    assert config.mqtt.port == 1883
+    assert config.mqtt.username == ""
+    assert config.mqtt.password == ""

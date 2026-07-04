@@ -1,10 +1,11 @@
 <?php
+$pluginFolder = 'smarthomebridge';
 $lbpbin = getenv('LBPBIN') ?: './bin';
 $lbpconfig = getenv('LBPCONFIG') ?: './config';
 $lbplog = getenv('LBPLOG') ?: './logs';
-$bridgeConfig = $lbpconfig . '/smarthomebridge/smart-home-bridge.ini';
-$bridgeCtl = $lbpbin . '/bridge_ctl.sh';
-$logFile = $lbplog . '/smart-home-bridge.log';
+$bridgeConfig = $lbpconfig . '/' . $pluginFolder . '/smart-home-bridge.ini';
+$bridgeCtl = $lbpbin . '/' . $pluginFolder . '/bridge_ctl.sh';
+$logFile = $lbplog . '/' . $pluginFolder . '/smart-home-bridge.log';
 $allowedCommands = array('start', 'stop', 'restart', 'status', 'dump-config');
 $allowedDoorCommands = array(
     'open_door',
@@ -46,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit('Invalid door command');
         }
         exec(
-            'SMART_HOME_BRIDGE_CONFIG_SOURCE=loxberry smart-home-bridge-door-command '
+            escapeshellcmd($bridgeCtl) . ' door-command '
                 . escapeshellarg($doorCommand),
             $output,
             $exitCode

@@ -4,14 +4,16 @@ set -eu
 COMMAND="${1:-status}"
 export SMART_HOME_BRIDGE_CONFIG_SOURCE=loxberry
 
+PLUGIN_FOLDER="${PLUGIN_FOLDER:-smarthomebridge}"
 LBPBIN="${LBPBIN:-./bin}"
 LBPCONFIG="${LBPCONFIG:-./config}"
 LBHOMEDIR="${LBHOMEDIR:-./loxberry}"
-LOG_DIR="${LBPLOG:-./logs}"
+BIN_DIR="${LBPBIN}/${PLUGIN_FOLDER}"
+LOG_DIR="${LBPLOG:-./logs}/${PLUGIN_FOLDER}"
 PID_FILE="${LOG_DIR}/smart-home-bridge.pid"
 LOG_FILE="${LOG_DIR}/smart-home-bridge.log"
 export LBPBIN LBPCONFIG LBHOMEDIR
-PATH="${LBPBIN}:$PATH"
+PATH="${BIN_DIR}:${LBPBIN}:$PATH"
 
 start_bridge() {
     mkdir -p "$LOG_DIR"
@@ -55,8 +57,20 @@ case "$COMMAND" in
         smart-home-bridge-config-check
         smart-home-bridge-status
         ;;
+    door-command)
+        DOOR_COMMAND="${2:-}"
+        case "$DOOR_COMMAND" in
+            open_door|close_door|stop_door|get_door_state)
+                smart-home-bridge-door-command "$DOOR_COMMAND"
+                ;;
+            *)
+                echo "Usage: $0 door-command {open_door|close_door|stop_door|get_door_state}" >&2
+                exit 2
+                ;;
+        esac
+        ;;
     *)
-        echo "Usage: $0 {start|stop|restart|status|dump-config}" >&2
+        echo "Usage: $0 {start|stop|restart|status|dump-config|door-command}" >&2
         exit 2
         ;;
 esac

@@ -93,7 +93,7 @@ class app_config:
 
 def load_config(dotenv_path: str | None = None, override: bool = False) -> app_config:
     load_dotenv(dotenv_path=dotenv_path, override=override)
-    return _config_from_mapping(os.environ)
+    return _config_from_mapping(os.environ, require_mqtt_credentials=True)
 
 
 def load_loxberry_config(
@@ -110,10 +110,13 @@ def load_loxberry_config(
     mqtt_settings = _read_loxberry_mqtt_settings(mqtt_config_path)
     bridge_settings = _read_ini_settings(bridge_config_path)
     values = {**bridge_settings, **mqtt_settings}
-    return _config_from_mapping(values)
+    return _config_from_mapping(values, require_mqtt_credentials=False)
 
 
-def _config_from_mapping(values: Mapping[str, str]) -> app_config:
+def _config_from_mapping(
+    values: Mapping[str, str],
+    require_mqtt_credentials: bool = True,
+) -> app_config:
     return app_config(
         door_api=DoorApiConfig(
             api_key=_required(values, "DOOR_API_KEY"),
@@ -122,8 +125,8 @@ def _config_from_mapping(values: Mapping[str, str]) -> app_config:
         mqtt=MqttConfig(
             host=_required(values, "MQTT_HOST"),
             port=_int(values, "MQTT_PORT", 1883),
-            username=_required(values, "MQTT_USERNAME"),
-            password=_required(values, "MQTT_PASSWORD"),
+            username=_mqtt_credential(values, "MQTT_USERNAME", require_mqtt_credentials),
+            password=_mqtt_credential(values, "MQTT_PASSWORD", require_mqtt_credentials),
             base_topic=_required(values, "MQTT_BASE_TOPIC"),
             use_tls=_bool(values, "MQTT_USE_TLS", False),
         ),
@@ -171,6 +174,16 @@ def _required(values: Mapping[str, str], name: str) -> str:
     if value is None or value.strip() == "":
         raise ValueError(f"Missing required environment variable: {name}")
     return value.strip()
+
+
+def _mqtt_credential(
+    values: Mapping[str, str],
+    name: str,
+    required: bool,
+) -> str:
+    if required:
+        return _required(values, name)
+    return _get(values, name, "")
 
 
 def _int(values: Mapping[str, str], name: str, default: int) -> int:
@@ -343,10 +356,22 @@ def _read_loxberry_mqtt_settings(path: Path) -> dict[str, str]:
             flattened,
             "mqttusername",
             "mqttuser",
+            "mqttbrokeruser",
+            "brokeruser",
             "username",
             "user",
+            default="",
         ),
-        "MQTT_PASSWORD": _first(flattened, "mqttpassword", "mqttpass", "password", "pass"),
+        "MQTT_PASSWORD": _first(
+            flattened,
+            "mqttpassword",
+            "mqttpass",
+            "mqttbrokerpass",
+            "brokerpass",
+            "password",
+            "pass",
+            default="",
+        ),
         "MQTT_USE_TLS": _first(flattened, "mqttusetls", "mqtttls", "usetls", default="false"),
     }
 

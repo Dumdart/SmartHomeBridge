@@ -17,7 +17,11 @@ class MqttClient:
 
         if self.config.use_tls:
             self.client.tls_set(tls_version=mqtt.client.ssl.PROTOCOL_TLS)
-        self.client.username_pw_set(self.config.username, self.config.password)
+        if self.config.username != "" or self.config.password != "":
+            self.client.username_pw_set(
+                self.config.username or None,
+                self.config.password or None,
+            )
 
         self.client.connect(self.config.host, self.config.port)
         self.client.loop_start()

@@ -17,6 +17,7 @@ from smart_home_bridge.config import (
 )
 from smart_home_bridge.core.command import command_result
 from smart_home_bridge.gui import run
+from smart_home_bridge.gui.control import MqttBackendControl
 from smart_home_bridge.gui.factory import create_gui_bridge_context
 from smart_home_bridge.gui.observer import MqttStatusObserver
 from smart_home_bridge.bridge_devices.chicken_thread_detector.image_limits import (
@@ -151,6 +152,26 @@ def test_gui_mqtt_status_observer_updates_snapshot():
     assert updated.door_state == "closed"
     assert updated.threat_assessment == assessment
     assert updated.camera_health == "Unavailable"
+
+
+def test_gui_mqtt_backend_control_publishes_door_command():
+    events = []
+
+    control = MqttBackendControl(
+        mqtt_config=_config().mqtt,
+        command_topic="loxone/chicken-door/command",
+        mqtt_client_factory=lambda mqtt_config: FakeMqttClient(events, mqtt_config),
+    )
+
+    result = asyncio.run(control.execute_door_command("open_door"))
+
+    assert result.success is True
+    assert events == [
+        ("init", "mqtt.local"),
+        ("connect",),
+        ("publish", "loxone/chicken-door/command", "open_door"),
+        ("disconnect",),
+    ]
 
 
 def test_gui_threat_scan_fetches_infers_scores_and_annotates_frame():
@@ -377,6 +398,30 @@ class FakeBackendControl:
         self.commands.append(command_name)
         self.door.position = self.resulting_position
         return command_result(data=self.resulting_position)
+
+
+class FakeMqttClient:
+    def __init__(self, events, mqtt_config):
+        self.events = events
+        self.events.append(("init", mqtt_config.host))
+
+    async def connect(self, on_connect=None):
+        self.events.append(("connect",))
+
+    async def publish(self, topic, payload, retain=False, on_publish=None):
+        self.events.append(("publish", topic, payload))
+
+    async def disconnect(self, on_disconnect=None):
+        self.events.append(("disconnect",))
+
+    async def subscribe(self, topic, on_subscribe=None):
+        pass
+
+    async def unsubscribe(self, topic, on_unsubscribe=None):
+        pass
+
+    def message_callback_add(self, topic, callback):
+        pass
 
 
 class FakeEnvSettings:
