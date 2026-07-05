@@ -1,205 +1,100 @@
 # Smart Home Bridge
 
-Smart Home Bridge helps connect local smart home systems with devices that do not expose a clean or compatible integration interface. Many smart home platforms provide customizable apps and controls, while individual devices often rely on vendor-specific APIs that are difficult to integrate directly.
+Smart Home Bridge connects LAN smart home systems to devices that are awkward to
+integrate directly. It normalizes device commands and state through MQTT so a
+controller such as Loxone can use stable topics instead of calling vendor APIs,
+camera endpoints, or local inference code itself.
 
-This project provides a configurable bridge between those devices and MQTT. Smart home systems can then read state and send commands through MQTT topics instead of talking to each vendor API directly.
+The current bridge supports:
 
-Smart Home Bridge can run from the console, from the optional local desktop GUI, or inside Docker. Custom devices can be defined and wired into the same bridge pattern.
+- Omlet chicken door control through `smartcoop-python-sdk`
+- Retained MQTT door status topics for state, numeric status, fault, connection,
+  battery, and light level
+- Chicken threat assessment from either injected MQTT detection payloads or an
+  optional ESP32-CAM polling pipeline
+- Local YOLO-based camera inference with the packaged
+  `chicken_threat_detector_best_v3.pt` model
+- Optional PySide6 desktop diagnostics and manual controls
+- Docker runtime for the backend service
+- LoxBerry plugin packaging, settings, service control, log tail, and manual
+  door command publishing
 
-## Example Architecture: Loxone
-
-```text
-Loxone App
-   ->
-Loxone Virtual Output
-   -> UDP/HTTP command to LoxBerry MQTT Gateway
-   ->
-MQTT topic: smart-home-bridge/chicken-door/command
-   ->
-Python backend/plugin
-   ->
-Door vendor API
-   ->
-Python backend publishes state
-   ->
-MQTT topics: smart-home-bridge/chicken-door/status*
-   ->
-LoxBerry MQTT Gateway
-   -> HTTP/UDP to Loxone Virtual Inputs
-   ->
-Loxone UI status
-```
-
-The Loxone App is not integrated directly with the device vendor API. Instead, the backend communicates through MQTT, and the Loxone Miniserver exposes controls and status through configured function blocks such as Garage/Gate or Door/Window Monitor.
-
-## Responsibilities
-
-### Python Backend
-
-* Authenticate against the door vendor API
-* Translate MQTT commands into API calls
-* Poll or receive door state
-* Publish normalized state to MQTT
-* Expose optional HTTP diagnostics
-* Handle retries, timeouts, and error states
-* Keep vendor-specific logic isolated behind adapters
-
-### Local Desktop GUI
-
-The optional PySide6 GUI is intended for local startup and diagnostics only. It
-is available through the `smart-home-bridge-gui` console script after installing the
-`gui` extra, and is not installed or started by the Docker image.
-
-The GUI provides:
-
-* Bridge status, including current door state, command MQTT topic, and HTTP diagnostics endpoint
-* Chicken threat detector status, MQTT topic, camera endpoint, risk level, score, and detection count
-* Manual threat inference that fetches the configured ESP32-CAM JPEG and renders detected objects with labeled borders
-* Environment Settings for MQTT host, port, username, password, base topic, HTTP host, and HTTP port
-* Save Environment support that writes MQTT and HTTP updates to `.env`
-* Chicken door controls for open, close, stop, and refresh
-* Activity logging in the window and in `LOG_FILE_PATH`, defaulting to `logs/smart-home-bridge.log`
-
-### MQTT Broker
-
-* Provide the local message bus between the backend and the smart home system
-* Recommended: Mosquitto
-* Run on the same LAN as the Miniserver
-* Use authentication and restricted ACLs
-
-### MQTT Contract
-
-Set `MQTT_BASE_TOPIC` to the namespace only, for example `smart-home-bridge`.
-The chicken door command subscription is:
-
-```text
-smart-home-bridge/chicken-door/command
-```
-
-Supported command payloads are `open_door`, `close_door`, `stop_door`, and
-`get_door_state`.
-
-Door state is published as retained scalar values:
-
-```text
-smart-home-bridge/chicken-door/status
-smart-home-bridge/chicken-door/status_code
-smart-home-bridge/chicken-door/fault
-smart-home-bridge/chicken-door/connected
-smart-home-bridge/chicken-door/battery
-smart-home-bridge/chicken-door/light_level
-```
-
-`status_code` uses `0=unknown`, `1=open`, `2=closed`, `3=opening/openpending`,
-`4=closing/closepending`, `5=stopping`, and `6=fault`.
-
-Usage events are also published as non-retained JSON messages:
-
-```text
-smart-home-bridge/usage/chicken-door
-smart-home-bridge/usage/camera-inference
-```
-
-Chicken door usage events include the command, success flag, resulting position,
-and timestamp. Camera inference usage events include the camera source, success
-flag, assessment level, score, detection count, and timestamp.
-
-### Chicken Threat Detector
-
-The chicken threat detector can run as an independent backend pipeline:
-
-```text
-ESP32-CAM /jpg
-   -> backend camera client fetches JPEG bytes
-   -> local YOLO inference with chicken_threat_detector_best_v3.pt
-   -> danger scoring
-   -> MQTT detector assessment publish
-```
-
-This pipeline is separate from the chicken door controller. It does not call
-door commands, inspect door state, or reuse the door HTTP API configuration.
-The existing detector MQTT payload path remains available for manual or test
-injection of precomputed detections.
-
-Configure the detector with:
-
-* `CAMERA_HOST`: ESP32-CAM host or IP address
-* `CAMERA_PORT`: ESP32-CAM HTTP port, usually `80`
-* `CAMERA_JPG_ENDPOINT`: JPEG endpoint, usually `/jpg`
-* `CAMERA_HEALTH_ENDPOINT`: optional health endpoint, usually `/health`
-* `CAMERA_TIMEOUT_SECONDS`: camera request timeout
-* `CAMERA_MAX_JPEG_BYTES`: maximum accepted camera JPEG response size
-* `CAMERA_AUTH_TOKEN`: bearer token sent to ESP32-CAM `/jpg` and `/health`
-* `CHICKEN_THREAT_ENABLED`: set to `true` to start backend polling
-* `CHICKEN_THREAT_MODEL_PATH`: local YOLO model path. If unset, the packaged
-  `chicken_threat_detector_best_v3.pt` model is used.
-* `CHICKEN_THREAT_POLL_INTERVAL_SECONDS`: seconds between camera frames
-
-Detector assessments are published on the detector MQTT topic, for example
-`smart-home-bridge/chicken-thread-detector`, as JSON:
-
-```json
-{"level":"medium","score":0.675,"detection_count":1,"triggering_detections":[{"label":"dog","confidence":0.9,"box":null}]}
-```
+For deeper architecture, MQTT, Loxone, and configuration details, see
+[TECHNICAL.MD](TECHNICAL.MD).
 
 ## Development
 
-1. Configure environment variables in `.env` or set them directly in the shell. See `.env.example` for the available settings.
+1. Copy `.env.example` to `.env` and set the required door and MQTT values.
+   Configure camera and detector values when you use threat inference.
 
-2. Install dependencies:
+2. Install the package from the repository root:
+
+```bash
+pip install -e ".[dev]"
+```
+
+Install optional extras when needed:
 
 ```bash
 pip install -e ".[gui]"
-```
-
-Install the optional desktop GUI dependencies when you want the local control
-panel. The GUI is a local development/runtime tool and is not part of the
-Docker image:
-
-```bash
-pip install -e ".[gui]"
-```
-
-For backend-only local threat inference without the desktop GUI, install:
-
-```bash
 pip install -e ".[inference]"
 ```
 
-3. Run the backend from the repository root:
+3. Run the backend:
 
 ```bash
-python .\src\smart_home_bridge\__main__.py
+smart-home-bridge
 ```
 
-Run the PySide6 GUI locally:
+4. Run the optional desktop GUI:
 
 ```bash
 smart-home-bridge-gui
 ```
 
-Use the GUI to inspect bridge status, trigger chicken door commands, review
-activity output, run one-off chicken threat inference, review the annotated
-camera frame, and edit MQTT/HTTP environment settings. Save Environment writes
-those values to `.env`; restart any already-running backend service for that
-process to pick up the changed environment.
+5. Check configuration or publish a manual door command:
 
-4. Run tests:
+```bash
+smart-home-bridge-config-check
+smart-home-bridge-status
+smart-home-bridge-door-command open_door
+```
+
+Supported door commands are `open_door`, `close_door`, `stop_door`, and
+`get_door_state`.
+
+6. Run tests:
 
 ```bash
 pytest
 ```
 
-5. Run with Docker Compose:
+## Runtime Configuration
+
+The default configuration source is `.env` or process environment variables.
+Required values are:
+
+- `DOOR_API_KEY`
+- `DOOR_DEVICE_ID`
+- `MQTT_HOST`
+- `MQTT_USERNAME`
+- `MQTT_PASSWORD`
+- `MQTT_BASE_TOPIC`
+
+Common optional values include `MQTT_PORT`, `MQTT_USE_TLS`, `HTTP_HOST`,
+`HTTP_PORT`, `LOG_LEVEL`, `LOG_FILE_PATH`, `BRIDGE_DEVICES_ENABLED`,
+`CAMERA_HOST`, `CAMERA_PORT`, and `CHICKEN_THREAT_ENABLED`.
+
+Set `MQTT_BASE_TOPIC` to the namespace only, for example
+`smart-home-bridge`. Device topics are appended by the bridge.
+
+## Docker
+
+Run the backend with Docker Compose:
 
 ```bash
 docker compose up -d
 ```
-
-Docker runs only the bridge service logic. The Dockerfile installs backend
-inference dependencies but not the optional PySide6 GUI dependencies, and the
-container command is `smart-home-bridge`. Start the GUI locally with
-`smart-home-bridge-gui` when you need desktop controls or diagnostics.
 
 Build the image directly:
 
@@ -207,35 +102,42 @@ Build the image directly:
 docker build -t smart-home-bridge:local .
 ```
 
+Docker runs only the backend service. The image installs inference dependencies
+but not the optional PySide6 GUI dependencies, and the container command is
+`smart-home-bridge`.
+
+## LoxBerry Plugin
+
 Build the LoxBerry plugin ZIP from the plugin payload directory:
 
 ```bash
 python scripts/build_loxberry_plugin.py
 ```
 
-Upload `build/smarthomebridge-loxberry.zip` to LoxBerry. Do not upload the
-GitHub source archive or a ZIP of the repository root; LoxBerry expects
-`plugin.cfg` directly at the ZIP root.
+Upload `build/smarthomebridge-loxberry.zip` to LoxBerry. Do not upload a GitHub
+source archive or a ZIP of the repository root; LoxBerry expects `plugin.cfg`
+directly at the archive root.
 
-The compose service reads runtime settings from `.env`. Set `MQTT_HOST`,
-`MQTT_PORT`, `MQTT_USERNAME`, `MQTT_PASSWORD`, `MQTT_BASE_TOPIC`, and
-`MQTT_USE_TLS` to the broker that the smart home system can reach.
+When `SMART_HOME_BRIDGE_CONFIG_SOURCE=loxberry`, the bridge reads MQTT broker
+settings from LoxBerry's system MQTT configuration and bridge-specific settings
+from `smart-home-bridge.ini`.
 
-The desktop GUI writes the same activity messages shown in the Activity panel
-to `LOG_FILE_PATH`. If the variable is not set, logs are appended to
-`logs/smart-home-bridge.log`.
+## GUI
 
-## Safety Requirements
+The GUI is for local diagnostics and manual operation. It can show bridge
+status, MQTT topics, current door state, activity logs, camera/detector status,
+one-off threat inference results, and annotated camera frames. It can also write
+selected MQTT and HTTP settings back to `.env`.
 
-* Do not expose MQTT or backend HTTP directly to the internet
-* Use MQTT authentication
-* Store API credentials outside source code
-* Implement command timeout handling
-* Publish `unknown` state if the vendor API is unreachable
-* Keep manual override possible
-* Avoid automatic close unless safety/obstruction handling is verified
-* Log all commands and resulting state transitions
+## Safety
+
+- Keep MQTT, camera, and configured HTTP endpoints on a trusted LAN.
+- Use MQTT authentication and restrict ACLs where possible.
+- Never commit `.env`, firmware `secrets.h`, API keys, MQTT passwords, camera
+  tokens, broker details, or private model data.
+- Treat door movement as safety-sensitive: validate command topics and payloads,
+  publish confirmed state, and preserve manual override behavior.
 
 ## License
 
-MIT - free to use!
+MIT

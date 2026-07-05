@@ -29,5 +29,7 @@ dist/
 
 .python-version
 
+AGENTS.md
+
 # ESP32-CAM local credentials
 src/firmware/esp32cam_extention/include/secrets.h
