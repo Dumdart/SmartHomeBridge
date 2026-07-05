@@ -1,4 +1,5 @@
 import importlib.util
+import configparser
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -78,6 +79,22 @@ def test_loxberry_plugin_includes_lifecycle_hooks():
         assert "<" in content
 
 
+def test_loxberry_plugin_cfg_declares_interface_in_system_section():
+    config = configparser.ConfigParser()
+    config.read("deploy/loxberry/smarthomebridge/plugin.cfg")
+
+    assert config["AUTHOR"]["NAME"] == "SmartHomeBridge"
+    assert config["AUTHOR"]["EMAIL"]
+    assert config["PLUGIN"]["NAME"] == "smarthomebridge"
+    assert config["PLUGIN"]["FOLDER"] == "smarthomebridge"
+    assert config["PLUGIN"]["TITLE"] == "SmartHomeBridge"
+    assert config["PLUGIN"]["VERSION"] == "0.1.0"
+    assert config["PLUGIN"]["WEBSITE"] == "https://github.com/Dumdart/SmartHomeBridge"
+    assert "INTERFACE" not in config["PLUGIN"]
+    assert config["SYSTEM"]["INTERFACE"] == "2.0"
+    assert config["SYSTEM"]["LB_MINIMUM"] == "3.0.0"
+
+
 def test_loxberry_package_has_plugin_files_at_archive_root(tmp_path):
     build_plugin_archive = load_loxberry_packager().build_plugin_archive
 
@@ -89,6 +106,11 @@ def test_loxberry_package_has_plugin_files_at_archive_root(tmp_path):
     assert "plugin.cfg" in names
     assert "postinstall.sh" in names
     assert "bin/bridge_ctl.sh" in names
+    assert "icons/icon.svg" in names
+    assert "icons/icon_64.png" in names
+    assert "icons/icon_128.png" in names
+    assert "icons/icon_256.png" in names
+    assert "icons/icon_512.png" in names
     assert "webfrontend/htmlauth/index.php" in names
     assert not any(name.startswith("SmartHomeBridge-") for name in names)
     assert not any(name.startswith("deploy/loxberry/") for name in names)

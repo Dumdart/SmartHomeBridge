@@ -1,14 +1,59 @@
 from __future__ import annotations
 
 import argparse
+import io
 import stat
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
+
+from PIL import Image, ImageDraw
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PLUGIN_SOURCE_DIR = PROJECT_ROOT / "deploy" / "loxberry" / "smarthomebridge"
 DEFAULT_OUTPUT = PROJECT_ROOT / "build" / "smarthomebridge-loxberry.zip"
+PNG_ICON_SIZES = (64, 128, 256, 512)
+
+
+def create_png_icon(size: int) -> bytes:
+    image = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    scale = size / 64
+
+    def point(value: float) -> int:
+        return round(value * scale)
+
+    draw.rounded_rectangle(
+        (0, 0, size - 1, size - 1),
+        radius=point(8),
+        fill="#1f2937",
+    )
+    draw.rectangle(
+        (point(14), point(36), point(50), point(52)),
+        fill="#f9fafb",
+    )
+    draw.line(
+        [
+            (point(10), point(36)),
+            (point(32), point(16)),
+            (point(54), point(36)),
+        ],
+        fill="#f59e0b",
+        width=max(1, point(5)),
+        joint="curve",
+    )
+    draw.rectangle(
+        (point(25), point(38), point(39), point(52)),
+        fill="#374151",
+    )
+    draw.ellipse(
+        (point(41), point(11), point(53), point(23)),
+        fill="#22c55e",
+    )
+
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    return buffer.getvalue()
 
 
 def build_plugin_archive(
@@ -36,6 +81,13 @@ def build_plugin_archive(
 
             with path.open("rb") as source_file:
                 archive.writestr(info, source_file.read(), compress_type=ZIP_DEFLATED)
+
+        for size in PNG_ICON_SIZES:
+            archive.writestr(
+                f"icons/icon_{size}.png",
+                create_png_icon(size),
+                compress_type=ZIP_DEFLATED,
+            )
 
     return output_path
 
