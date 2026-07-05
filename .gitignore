@@ -14,6 +14,7 @@ __pycache__/
 *.pyd
 
 .pytest_cache/
+.pytest-tmp/
 .ruff_cache/
 .mypy_cache/
 .pio/

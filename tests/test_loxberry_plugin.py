@@ -1,4 +1,15 @@
+import importlib.util
 from pathlib import Path
+from zipfile import ZipFile
+
+
+def load_loxberry_packager():
+    script_path = Path("scripts/build_loxberry_plugin.py")
+    spec = importlib.util.spec_from_file_location("build_loxberry_plugin", script_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
 
 
 def test_bridge_ctl_uses_fixed_commands_and_loxberry_paths():
@@ -65,3 +76,19 @@ def test_loxberry_plugin_includes_lifecycle_hooks():
         assert hook.exists()
         assert "/opt/loxberry" not in content
         assert "<" in content
+
+
+def test_loxberry_package_has_plugin_files_at_archive_root(tmp_path):
+    build_plugin_archive = load_loxberry_packager().build_plugin_archive
+
+    archive_path = build_plugin_archive(output_path=tmp_path / "smarthomebridge.zip")
+
+    with ZipFile(archive_path) as archive:
+        names = set(archive.namelist())
+
+    assert "plugin.cfg" in names
+    assert "postinstall.sh" in names
+    assert "bin/bridge_ctl.sh" in names
+    assert "webfrontend/htmlauth/index.php" in names
+    assert not any(name.startswith("SmartHomeBridge-") for name in names)
+    assert not any(name.startswith("deploy/loxberry/") for name in names)

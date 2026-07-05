@@ -207,6 +207,16 @@ Build the image directly:
 docker build -t smart-home-bridge:local .
 ```
 
+Build the LoxBerry plugin ZIP from the plugin payload directory:
+
+```bash
+python scripts/build_loxberry_plugin.py
+```
+
+Upload `build/smarthomebridge-loxberry.zip` to LoxBerry. Do not upload the
+GitHub source archive or a ZIP of the repository root; LoxBerry expects
+`plugin.cfg` directly at the ZIP root.
+
 The compose service reads runtime settings from `.env`. Set `MQTT_HOST`,
 `MQTT_PORT`, `MQTT_USERNAME`, `MQTT_PASSWORD`, `MQTT_BASE_TOPIC`, and
 `MQTT_USE_TLS` to the broker that the smart home system can reach.
