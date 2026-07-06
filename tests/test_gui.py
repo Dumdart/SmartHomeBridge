@@ -3,6 +3,8 @@ from dataclasses import replace
 from io import BytesIO
 import os
 from pathlib import Path
+import sys
+import types
 
 import pytest
 
@@ -70,6 +72,60 @@ def _config(log_file_path: str = "logs/smart-home-bridge.log"):
 
 def test_gui_entrypoint_imports_without_pyside6():
     assert callable(run)
+
+
+def test_gui_runner_loads_dotenv_aware_config(monkeypatch):
+    from smart_home_bridge.gui import runner
+
+    config = _config()
+    events = []
+
+    class FakeApplication:
+        def __init__(self, argv):
+            events.append(("app", argv))
+
+        def exec(self):
+            events.append(("exec",))
+            return 0
+
+    class FakeWindow:
+        def __init__(self, context):
+            events.append(("window", context))
+
+        def show(self):
+            events.append(("show",))
+
+    qt_widgets = types.ModuleType("PySide6.QtWidgets")
+    qt_widgets.QApplication = FakeApplication
+    monkeypatch.setitem(sys.modules, "PySide6", types.ModuleType("PySide6"))
+    monkeypatch.setitem(sys.modules, "PySide6.QtWidgets", qt_widgets)
+
+    main_window = types.ModuleType("smart_home_bridge.gui.main_window")
+    main_window.MainWindow = FakeWindow
+    monkeypatch.setitem(sys.modules, "smart_home_bridge.gui.main_window", main_window)
+
+    monkeypatch.setattr(runner, "load_config", lambda: config)
+    monkeypatch.setattr(
+        runner,
+        "create_gui_bridge_context",
+        lambda loaded_config: ("context", loaded_config),
+    )
+
+    def fake_exit(code):
+        raise SystemExit(code)
+
+    monkeypatch.setattr(sys, "exit", fake_exit)
+
+    with pytest.raises(SystemExit) as exc:
+        runner.run()
+
+    assert exc.value.code == 0
+    assert events == [
+        ("app", sys.argv),
+        ("window", ("context", config)),
+        ("show",),
+        ("exec",),
+    ]
 
 
 def test_gui_context_wires_chicken_door_controller():
