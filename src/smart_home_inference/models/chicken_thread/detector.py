@@ -64,3 +64,11 @@ class LocalChickenThreadDetector:
             )
 
         return detections
+
+    def ready(self) -> tuple[bool, str | None]:
+        try:
+            self._model()
+        except Exception as exc:
+            return False, str(exc)
+
+        return True, None

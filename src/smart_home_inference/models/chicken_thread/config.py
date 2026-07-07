@@ -59,14 +59,16 @@ class ChickenThreadModelConfig:
 
 def default_model_config(
     model_path: str = DEFAULT_CHICKEN_THREAT_MODEL_PATH,
+    confidence_threshold: float = 0.35,
+    image_size: int = 640,
 ) -> ChickenThreadModelConfig:
     return ChickenThreadModelConfig(
         model_path=model_path,
         class_names=MODEL_CLASS_NAMES,
         risk_by_label=RISK_BY_LABEL,
         label_aliases=LABEL_ALIASES,
-        confidence_threshold=0.35,
-        image_size=640,
+        confidence_threshold=confidence_threshold,
+        image_size=image_size,
         medium_threshold=0.4,
         high_threshold=0.7,
         critical_threshold=0.9,

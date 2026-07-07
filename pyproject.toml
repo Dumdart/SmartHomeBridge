@@ -25,7 +25,9 @@ gui = [
 ]
 inference = [
     "Pillow",
+    "starlette",
     "ultralytics",
+    "uvicorn",
 ]
 
 [project.scripts]
@@ -33,6 +35,7 @@ smart-home-bridge = "smart_home_bridge.__main__:run"
 smart-home-bridge-status = "smart_home_bridge.__main__:status"
 smart-home-bridge-config-check = "smart_home_bridge.__main__:config_check"
 smart-home-bridge-door-command = "smart_home_bridge.__main__:door_command"
+smart-home-inference = "smart_home_inference.__main__:main"
 
 [project.gui-scripts]
 smart-home-bridge-gui = "smart_home_bridge.gui:run"

@@ -1,0 +1,197 @@
+import ast
+import tomllib
+from pathlib import Path
+
+from starlette.testclient import TestClient
+
+from smart_home_contracts.chicken_thread import BoundingBox, Detection, DetectionFrame
+from smart_home_inference.api import create_app
+from smart_home_inference.exceptions import ImageTooLargeError, InvalidImageError
+from smart_home_inference.models.chicken_thread import ChickenThreatInferenceService
+from smart_home_inference.registry import ModelRegistry
+
+
+class FakeModel:
+    identifier = "chicken-threat"
+
+    def __init__(self, frame=None, ready=True, detail=None):
+        self.frame = frame or DetectionFrame()
+        self.ready_value = ready
+        self.detail = detail
+        self.ready_calls = 0
+        self.infer_calls = []
+
+    def ready(self):
+        self.ready_calls += 1
+        return self.ready_value, self.detail
+
+    def infer(self, image_bytes, source=None):
+        self.infer_calls.append((image_bytes, source))
+        return self.frame
+
+
+def test_health_endpoint_succeeds_without_loading_model():
+    model = FakeModel()
+    client = TestClient(create_app(ModelRegistry([model])))
+
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+    assert model.ready_calls == 0
+
+
+def test_ready_endpoint_reports_model_load_failure_clearly():
+    model = FakeModel(ready=False, detail="model file missing")
+    client = TestClient(create_app(ModelRegistry([model])))
+
+    response = client.get("/ready")
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "ready": False,
+        "models": {
+            "chicken-threat": {
+                "ready": False,
+                "detail": "model file missing",
+            }
+        },
+    }
+
+
+def test_models_endpoint_lists_chicken_threat():
+    client = TestClient(create_app(ModelRegistry([FakeModel()])))
+
+    response = client.get("/v1/models")
+
+    assert response.status_code == 200
+    assert response.json() == {"models": ["chicken-threat"]}
+
+
+def test_chicken_threat_endpoint_rejects_non_jpeg_content_type():
+    client = TestClient(create_app(ModelRegistry([FakeModel()])))
+
+    response = client.post(
+        "/v1/chicken-threat/infer",
+        content=b"not-json",
+        headers={"content-type": "application/json"},
+    )
+
+    assert response.status_code == 415
+    assert response.json()["error"] == "unsupported_content_type"
+
+
+def test_chicken_threat_endpoint_rejects_invalid_image_bytes():
+    def reject_invalid(_image_bytes):
+        raise InvalidImageError("Image payload is not a valid JPEG image.")
+
+    service = ChickenThreatInferenceService(
+        detector=FakeDetector(),
+        image_decoder=reject_invalid,
+    )
+    client = TestClient(create_app(ModelRegistry([service])))
+
+    response = client.post(
+        "/v1/chicken-threat/infer",
+        content=b"not-jpeg",
+        headers={"content-type": "image/jpeg"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"] == "invalid_image"
+
+
+def test_chicken_threat_endpoint_rejects_oversized_images():
+    def reject_oversized(_image_bytes):
+        raise ImageTooLargeError("Image exceeds 4000000 pixels: 3000x3000")
+
+    service = ChickenThreatInferenceService(
+        detector=FakeDetector(),
+        image_decoder=reject_oversized,
+    )
+    client = TestClient(create_app(ModelRegistry([service])))
+
+    response = client.post(
+        "/v1/chicken-threat/infer",
+        content=b"jpeg",
+        headers={"content-type": "image/jpeg"},
+    )
+
+    assert response.status_code == 413
+    assert response.json()["error"] == "image_too_large"
+
+
+def test_chicken_threat_endpoint_returns_raw_detections_for_fake_model():
+    frame = DetectionFrame(
+        detections=(
+            Detection(
+                label="wild_mammal_threat",
+                confidence=0.96,
+                box=BoundingBox(left=0.1, top=0.2, right=0.3, bottom=0.4),
+            ),
+        ),
+        source=None,
+    )
+    model = FakeModel(frame=frame)
+    client = TestClient(create_app(ModelRegistry([model])))
+
+    response = client.post(
+        "/v1/models/chicken-threat/infer",
+        content=b"jpeg-bytes",
+        headers={"content-type": "image/jpeg"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == frame.to_dict()
+    assert model.infer_calls == [(b"jpeg-bytes", None)]
+
+
+def test_model_registry_resolves_known_models_and_rejects_unknown_models():
+    model = FakeModel()
+    registry = ModelRegistry([model])
+
+    assert registry.get("chicken-threat") is model
+
+    try:
+        registry.get("unknown")
+    except Exception as exc:
+        assert str(exc) == "Unknown model: unknown"
+    else:
+        raise AssertionError("Expected unknown model to be rejected")
+
+
+def test_inference_backend_does_not_import_bridge_runtime_modules():
+    inference_root = Path("src/smart_home_inference")
+
+    for path in inference_root.rglob("*.py"):
+        tree = ast.parse(path.read_text(), filename=str(path))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                imported_names = [alias.name for alias in node.names]
+            elif isinstance(node, ast.ImportFrom):
+                imported_names = [node.module or ""]
+            else:
+                continue
+
+            assert all(
+                not name.startswith("smart_home_bridge") for name in imported_names
+            ), f"{path} imports a bridge runtime module"
+
+
+def test_bridge_runtime_dependencies_do_not_include_inference_only_packages():
+    pyproject = tomllib.loads(Path("pyproject.toml").read_text())
+    runtime_dependencies = set(pyproject["project"]["dependencies"])
+    inference_dependencies = set(pyproject["project"]["optional-dependencies"]["inference"])
+
+    assert "Pillow" not in runtime_dependencies
+    assert "ultralytics" not in runtime_dependencies
+    assert "Pillow" in inference_dependencies
+    assert "ultralytics" in inference_dependencies
+
+
+class FakeDetector:
+    def ready(self):
+        return True, None
+
+    def detect(self, image, source=None):
+        return DetectionFrame(source=source)
