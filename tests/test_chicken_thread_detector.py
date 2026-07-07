@@ -6,9 +6,7 @@ from types import SimpleNamespace
 import pytest
 
 from smart_home_bridge.bridge_devices.chicken_thread_detector import (
-    ChickenThreatInferenceService,
     DangerScorer,
-    LocalChickenThreadDetector,
     chicken_thread_detector,
     chicken_thread_detector_controller,
     chicken_thread_detector_mqtt_callbacks,
@@ -21,7 +19,6 @@ from smart_home_bridge.bridge_devices.chicken_thread_detector.chicken_thread_det
 from smart_home_bridge.bridge_devices.chicken_thread_detector.image_limits import (
     MAX_IMAGE_PIXELS,
 )
-from smart_home_bridge.bridge_devices.chicken_thread_detector.inference import _decode_jpeg
 from smart_home_bridge.config import (
     CameraConfig,
     ChickenThreatConfig,
@@ -30,7 +27,12 @@ from smart_home_bridge.config import (
     MqttConfig,
     app_config,
 )
-from smart_home_bridge.models import Detection, DetectionFrame, ThreatLevel
+from smart_home_contracts.chicken_thread import DetectionFrame, Detection, ThreatLevel
+from smart_home_inference.models.chicken_thread import (
+    ChickenThreatInferenceService,
+    LocalChickenThreadDetector,
+    _decode_jpeg,
+)
 
 
 def test_danger_scorer_maps_wild_mammal_alias_to_critical_threat():
@@ -272,7 +274,7 @@ def test_inference_service_decodes_jpeg_bytes_before_detection():
 
 
 def test_inference_decoder_rejects_oversized_image(monkeypatch):
-    from smart_home_bridge.bridge_devices.chicken_thread_detector import inference
+    from smart_home_inference.models.chicken_thread import inference
 
     def reject_image(_image):
         raise RuntimeError(f"Camera image exceeds {MAX_IMAGE_PIXELS} pixels: test")

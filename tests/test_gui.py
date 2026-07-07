@@ -29,7 +29,7 @@ from smart_home_bridge.gui.threat_detection import (
     GuiThreatScanService,
     annotate_detection_jpeg,
 )
-from smart_home_bridge.models import (
+from smart_home_contracts.chicken_thread import (
     BoundingBox,
     DangerAssessment,
     Detection,

@@ -4,7 +4,7 @@ from typing import Protocol
 from smart_home_bridge.bridge_devices.chicken_door import chicken_door
 from smart_home_bridge.bridge_devices.chicken_thread_detector import chicken_thread_detector
 from smart_home_bridge.config import app_config
-from smart_home_bridge.models import DangerAssessment
+from smart_home_contracts.chicken_thread import DangerAssessment
 from smart_home_bridge.gui.view_model import GuiBridgeSnapshot, snapshot_from_config
 
 

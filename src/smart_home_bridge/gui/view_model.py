@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 
 from smart_home_bridge.bridge_devices.chicken_door import door_position
 from smart_home_bridge.config import app_config
-from smart_home_bridge.models import DangerAssessment
+from smart_home_contracts.chicken_thread import DangerAssessment
 
 
 @dataclass(frozen=True)

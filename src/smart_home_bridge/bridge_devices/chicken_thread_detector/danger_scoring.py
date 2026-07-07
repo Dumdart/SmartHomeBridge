@@ -1,6 +1,6 @@
 from smart_home_bridge.bridge_devices.chicken_thread_detector.model_config import default_model_config
-from smart_home_bridge.models import ChickenThreadModelConfig, DangerAssessment, Detection, ThreatLevel
-
+from smart_home_contracts.chicken_thread import DangerAssessment, Detection, ThreatLevel
+from smart_home_inference.models.chicken_thread.config import ChickenThreadModelConfig
 
 class DangerScorer:
     def __init__(self, config: ChickenThreadModelConfig | None = None):

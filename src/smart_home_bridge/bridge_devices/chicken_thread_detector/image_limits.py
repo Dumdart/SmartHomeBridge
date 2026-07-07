@@ -1,10 +1,9 @@
-MAX_IMAGE_PIXELS = 4_000_000
+from smart_home_inference.models.chicken_thread.image_limits import (
+    MAX_IMAGE_PIXELS,
+    validate_image_size,
+)
 
-
-def validate_image_size(image, max_pixels: int = MAX_IMAGE_PIXELS):
-    width, height = image.size
-    pixels = width * height
-    if pixels > max_pixels:
-        raise RuntimeError(
-            f"Camera image exceeds {max_pixels} pixels: {width}x{height}"
-        )
+__all__ = [
+    "MAX_IMAGE_PIXELS",
+    "validate_image_size",
+]

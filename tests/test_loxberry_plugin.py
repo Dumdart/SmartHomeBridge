@@ -133,7 +133,7 @@ def test_loxberry_package_has_plugin_files_at_archive_root(tmp_path):
     assert "data/python-package/src/smart_home_bridge/__main__.py" in names
     assert "data/python-package/src/smart_home_bridge/config.py" in names
     assert (
-        "data/python-package/src/smart_home_bridge/models/model/chicken_threat_detector_best_v3.pt"
+        "data/python-package/src/smart_home_inference/models/chicken_thread/model/chicken_threat_detector_best_v3.pt"
         in names
     )
     assert not any(name.startswith("SmartHomeBridge-") for name in names)
