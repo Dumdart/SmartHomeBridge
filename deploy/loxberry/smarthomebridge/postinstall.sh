@@ -8,9 +8,7 @@ LOG_DIR="${LBPLOG:?}/${PLUGIN_FOLDER}"
 BIN_DIR="${LBPBIN:?}/${PLUGIN_FOLDER}"
 PACKAGE_DIR="${DATA_DIR}/python-package"
 VENV_DIR="${DATA_DIR}/venv"
-INFERENCE_VENV_DIR="${DATA_DIR}/inference-venv"
 VENV_BIN="${VENV_DIR}/bin"
-INFERENCE_VENV_BIN="${INFERENCE_VENV_DIR}/bin"
 
 mkdir -p "$CONFIG_DIR" "$LOG_DIR" "$DATA_DIR" "$BIN_DIR"
 touch "$LOG_DIR/smart-home-bridge.log"
@@ -22,28 +20,15 @@ fi
 
 python3 -m venv "$VENV_DIR"
 "$VENV_BIN/python" -m pip install --upgrade "$PACKAGE_DIR"
-mkdir -p "$INFERENCE_VENV_BIN"
 
 for command in \
     smart-home-bridge \
     smart-home-bridge-status \
     smart-home-bridge-config-check \
-    smart-home-bridge-door-command \
-    smart-home-inference
+    smart-home-bridge-door-command
 do
-    if [ "$command" = "smart-home-inference" ]; then
-        cat > "$BIN_DIR/$command" <<'EOF'
-#!/bin/sh
-echo "SmartHomeBridge inference dependencies are not installed on LoxBerry." >&2
-echo "Run the inference service in Docker or install the Python inference extra manually on a host with enough disk space." >&2
-exit 1
-EOF
-        chmod 755 "$BIN_DIR/$command"
-    else
-        ln -sf "$VENV_BIN/$command" "$BIN_DIR/$command"
-    fi
+    ln -sf "$VENV_BIN/$command" "$BIN_DIR/$command"
 done
 
 echo "<OK> SmartHomeBridge plugin directories prepared"
 echo "<OK> SmartHomeBridge backend installed"
-echo "<INFO> SmartHomeBridge inference backend skipped during LoxBerry install"

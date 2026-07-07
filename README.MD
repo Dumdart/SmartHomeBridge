@@ -153,10 +153,9 @@ from `smart-home-bridge.ini`.
 
 The plugin installs only the bridge runtime during LoxBerry installation.
 Inference dependencies such as Torch and Ultralytics can require multiple GB of
-disk space, so run inference with Docker or install `.[inference]` manually in
-the inference venv on a larger host. `bridge_ctl.sh start` starts the bridge;
-separate `start-bridge`, `stop-bridge`, `start-inference`, `stop-inference`, and
-`install-inference` info commands are also available from the web UI.
+disk space, so run inference with Docker or install `.[inference]` manually on a
+larger host. The LoxBerry web UI exposes only the bridge lifecycle, config
+checks, log tailing, settings, and manual door commands.
 
 ## GUI
 

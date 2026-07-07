@@ -10,11 +10,6 @@ $allowedCommands = array(
     'start',
     'stop',
     'restart',
-    'start-bridge',
-    'stop-bridge',
-    'start-inference',
-    'stop-inference',
-    'install-inference',
     'status',
     'dump-config',
 );
@@ -154,11 +149,6 @@ function e($value) {
         <button name="action" value="start">Start</button>
         <button name="action" value="stop">Stop</button>
         <button name="action" value="restart">Restart</button>
-        <button name="action" value="start-bridge">Start Bridge</button>
-        <button name="action" value="stop-bridge">Stop Bridge</button>
-        <button name="action" value="start-inference">Start Inference</button>
-        <button name="action" value="stop-inference">Stop Inference</button>
-        <button name="action" value="install-inference">Inference Install Info</button>
         <button name="action" value="dump-config">Config Check</button>
         <button name="action" value="log-tail">Log Tail</button>
     </form>

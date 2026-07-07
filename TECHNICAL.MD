@@ -567,11 +567,6 @@ The ZIP must contain `plugin.cfg` directly at the root.
 start
 stop
 restart
-start-bridge
-stop-bridge
-start-inference
-stop-inference
-install-inference
 status
 dump-config
 door-command open_door
@@ -580,17 +575,16 @@ door-command stop_door
 door-command get_door_state
 ```
 
-`start` starts the bridge runtime only. `stop` stops the bridge first and then
-inference if it is running.
+`start`, `stop`, and `restart` control the bridge runtime installed by the
+LoxBerry plugin. Inference is treated as an external service and is not started
+or stopped by the plugin.
 
 The script exports `SMART_HOME_BRIDGE_CONFIG_SOURCE=loxberry`, resolves
 standard LoxBerry directories from `LBPBIN`, `LBPCONFIG`, `LBHOMEDIR`,
 `LBPDATA`, and `LBPLOG`, and writes process output to the plugin log directory.
 The plugin installs the bridge virtual environment at
-`$LBPDATA/smarthomebridge/venv`. The inference extra is intentionally skipped
-because Torch and Ultralytics can require multiple GB of disk space; run the
-inference service with Docker or install `.[inference]` manually on a larger
-host when local model serving is required.
+`$LBPDATA/smarthomebridge/venv`. Run the inference service with Docker or on a
+larger host when local model serving is required.
 
 ## Docker Runtime
 
