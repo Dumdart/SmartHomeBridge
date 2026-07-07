@@ -13,6 +13,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PLUGIN_SOURCE_DIR = PROJECT_ROOT / "deploy" / "loxberry" / "smarthomebridge"
 DEFAULT_OUTPUT = PROJECT_ROOT / "build" / "smarthomebridge-loxberry.zip"
 PNG_ICON_SIZES = (64, 128, 256, 512)
+PYTHON_PACKAGE_ROOT = "data/python-package"
+PYTHON_PACKAGE_FILES = (
+    PROJECT_ROOT / "pyproject.toml",
+    PROJECT_ROOT / "README.MD",
+)
 
 
 def create_png_icon(size: int) -> bytes:
@@ -56,6 +61,17 @@ def create_png_icon(size: int) -> bytes:
     return buffer.getvalue()
 
 
+def should_include_python_source(path: Path) -> bool:
+    parts = set(path.parts)
+    if "__pycache__" in parts or "notes" in parts:
+        return False
+    if path.suffix in {".pyc", ".pyo"}:
+        return False
+    if path.name == "chicken_threat_detector_best_v1.pt":
+        return False
+    return path.is_file()
+
+
 def build_plugin_archive(
     source_dir: Path = PLUGIN_SOURCE_DIR,
     output_path: Path = DEFAULT_OUTPUT,
@@ -88,6 +104,16 @@ def build_plugin_archive(
                 create_png_icon(size),
                 compress_type=ZIP_DEFLATED,
             )
+
+        for path in PYTHON_PACKAGE_FILES:
+            archive.write(path, f"{PYTHON_PACKAGE_ROOT}/{path.name}")
+
+        package_src = PROJECT_ROOT / "src" / "smart_home_bridge"
+        for path in sorted(package_src.rglob("*")):
+            if not should_include_python_source(path):
+                continue
+            relative_path = path.relative_to(PROJECT_ROOT).as_posix()
+            archive.write(path, f"{PYTHON_PACKAGE_ROOT}/{relative_path}")
 
     return output_path
 

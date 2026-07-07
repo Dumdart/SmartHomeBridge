@@ -20,7 +20,9 @@ def test_bridge_ctl_uses_fixed_commands_and_loxberry_paths():
     assert "LBPBIN" in script
     assert "LBPCONFIG" in script
     assert "LBHOMEDIR" in script
+    assert "LBPDATA" in script
     assert "LBPLOG" in script
+    assert 'VENV_BIN="${LBPDATA}/${PLUGIN_FOLDER}/venv/bin"' in script
     assert 'PLUGIN_FOLDER="${PLUGIN_FOLDER:-smarthomebridge}"' in script
     assert 'BIN_DIR="${LBPBIN}/${PLUGIN_FOLDER}"' in script
     assert 'LOG_DIR="${LBPLOG:-./logs}/${PLUGIN_FOLDER}"' in script
@@ -79,6 +81,20 @@ def test_loxberry_plugin_includes_lifecycle_hooks():
         assert "<" in content
 
 
+def test_loxberry_lifecycle_installs_backend_into_plugin_venv():
+    preinstall = Path("deploy/loxberry/smarthomebridge/preinstall.sh").read_text()
+    postinstall = Path("deploy/loxberry/smarthomebridge/postinstall.sh").read_text()
+
+    assert "python3 3.11 or newer" in preinstall
+    assert "python3 -m venv --help" in preinstall
+    assert 'DATA_DIR="${LBPDATA:?}/${PLUGIN_FOLDER}"' in postinstall
+    assert 'PACKAGE_DIR="${DATA_DIR}/python-package"' in postinstall
+    assert 'VENV_DIR="${DATA_DIR}/venv"' in postinstall
+    assert 'python3 -m venv "$VENV_DIR"' in postinstall
+    assert '"$VENV_BIN/python" -m pip install --upgrade "$PACKAGE_DIR"' in postinstall
+    assert 'ln -sf "$VENV_BIN/$command" "$BIN_DIR/$command"' in postinstall
+
+
 def test_loxberry_plugin_cfg_declares_interface_in_system_section():
     config = configparser.ConfigParser()
     config.read("deploy/loxberry/smarthomebridge/plugin.cfg")
@@ -112,5 +128,13 @@ def test_loxberry_package_has_plugin_files_at_archive_root(tmp_path):
     assert "icons/icon_256.png" in names
     assert "icons/icon_512.png" in names
     assert "webfrontend/htmlauth/index.php" in names
+    assert "data/python-package/pyproject.toml" in names
+    assert "data/python-package/README.MD" in names
+    assert "data/python-package/src/smart_home_bridge/__main__.py" in names
+    assert "data/python-package/src/smart_home_bridge/config.py" in names
+    assert (
+        "data/python-package/src/smart_home_bridge/models/model/chicken_threat_detector_best_v3.pt"
+        in names
+    )
     assert not any(name.startswith("SmartHomeBridge-") for name in names)
     assert not any(name.startswith("deploy/loxberry/") for name in names)
