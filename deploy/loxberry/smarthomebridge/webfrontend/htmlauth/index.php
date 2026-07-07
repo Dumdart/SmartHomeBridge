@@ -6,7 +6,17 @@ $lbplog = getenv('LBPLOG') ?: './logs';
 $bridgeConfig = $lbpconfig . '/' . $pluginFolder . '/smart-home-bridge.ini';
 $bridgeCtl = $lbpbin . '/' . $pluginFolder . '/bridge_ctl.sh';
 $logFile = $lbplog . '/' . $pluginFolder . '/smart-home-bridge.log';
-$allowedCommands = array('start', 'stop', 'restart', 'status', 'dump-config');
+$allowedCommands = array(
+    'start',
+    'stop',
+    'restart',
+    'start-bridge',
+    'stop-bridge',
+    'start-inference',
+    'stop-inference',
+    'status',
+    'dump-config',
+);
 $allowedDoorCommands = array(
     'open_door',
     'close_door',
@@ -24,6 +34,8 @@ $editableSettings = array(
     'CAMERA_HOST',
     'CAMERA_PORT',
     'CHICKEN_THREAT_ENABLED',
+    'CHICKEN_THREAT_INFERENCE_URL',
+    'CHICKEN_THREAT_INFERENCE_TIMEOUT_SECONDS',
     'CHICKEN_THREAT_POLL_INTERVAL_SECONDS',
     'LOG_LEVEL',
     'LOG_FILE_PATH',
@@ -141,6 +153,10 @@ function e($value) {
         <button name="action" value="start">Start</button>
         <button name="action" value="stop">Stop</button>
         <button name="action" value="restart">Restart</button>
+        <button name="action" value="start-bridge">Start Bridge</button>
+        <button name="action" value="stop-bridge">Stop Bridge</button>
+        <button name="action" value="start-inference">Start Inference</button>
+        <button name="action" value="stop-inference">Stop Inference</button>
         <button name="action" value="dump-config">Config Check</button>
         <button name="action" value="log-tail">Log Tail</button>
     </form>

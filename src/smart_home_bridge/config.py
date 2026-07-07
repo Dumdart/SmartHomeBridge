@@ -4,15 +4,12 @@ import re
 from collections.abc import Mapping
 from configparser import ConfigParser
 from dataclasses import dataclass, field
-from importlib.resources import files
 from pathlib import Path
 
 from dotenv import load_dotenv
 
-DEFAULT_CHICKEN_THREAT_MODEL_PATH = str(
-    files("smart_home_inference.models.chicken_thread.model").joinpath(
-        "chicken_threat_detector_best_v3.pt"
-    )
+DEFAULT_CHICKEN_THREAT_INFERENCE_URL = (
+    "http://localhost:8090/v1/chicken-threat/infer"
 )
 
 
@@ -52,7 +49,8 @@ class CameraConfig:
 @dataclass(frozen=True)
 class ChickenThreatConfig:
     enabled: bool = False
-    model_path: str = DEFAULT_CHICKEN_THREAT_MODEL_PATH
+    inference_url: str = DEFAULT_CHICKEN_THREAT_INFERENCE_URL
+    inference_timeout_seconds: float = 10.0
     poll_interval_seconds: float = 10.0
 
 
@@ -158,10 +156,15 @@ def _config_from_mapping(
         ),
         chicken_threat=ChickenThreatConfig(
             enabled=_bool(values, "CHICKEN_THREAT_ENABLED", False),
-            model_path=_get(
+            inference_url=_get(
                 values,
-                "CHICKEN_THREAT_MODEL_PATH",
-                DEFAULT_CHICKEN_THREAT_MODEL_PATH,
+                "CHICKEN_THREAT_INFERENCE_URL",
+                DEFAULT_CHICKEN_THREAT_INFERENCE_URL,
+            ),
+            inference_timeout_seconds=_float(
+                values,
+                "CHICKEN_THREAT_INFERENCE_TIMEOUT_SECONDS",
+                10.0,
             ),
             poll_interval_seconds=_float(
                 values,
