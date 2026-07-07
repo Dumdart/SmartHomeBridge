@@ -22,8 +22,7 @@ fi
 
 python3 -m venv "$VENV_DIR"
 "$VENV_BIN/python" -m pip install --upgrade "$PACKAGE_DIR"
-python3 -m venv "$INFERENCE_VENV_DIR"
-"$INFERENCE_VENV_BIN/python" -m pip install --upgrade "$PACKAGE_DIR[inference]"
+mkdir -p "$INFERENCE_VENV_BIN"
 
 for command in \
     smart-home-bridge \
@@ -33,7 +32,13 @@ for command in \
     smart-home-inference
 do
     if [ "$command" = "smart-home-inference" ]; then
-        ln -sf "$INFERENCE_VENV_BIN/$command" "$BIN_DIR/$command"
+        cat > "$BIN_DIR/$command" <<'EOF'
+#!/bin/sh
+echo "SmartHomeBridge inference dependencies are not installed on LoxBerry." >&2
+echo "Run the inference service in Docker or install the Python inference extra manually on a host with enough disk space." >&2
+exit 1
+EOF
+        chmod 755 "$BIN_DIR/$command"
     else
         ln -sf "$VENV_BIN/$command" "$BIN_DIR/$command"
     fi
@@ -41,4 +46,4 @@ done
 
 echo "<OK> SmartHomeBridge plugin directories prepared"
 echo "<OK> SmartHomeBridge backend installed"
-echo "<OK> SmartHomeBridge inference backend installed"
+echo "<INFO> SmartHomeBridge inference backend skipped during LoxBerry install"

@@ -33,11 +33,19 @@ start_bridge() {
 
 start_inference() {
     mkdir -p "$LOG_DIR"
+    if [ ! -x "$INFERENCE_VENV_BIN/smart-home-inference" ]; then
+        echo "SmartHomeBridge inference is not installed. Use Docker inference or install the inference extra on a host with enough disk space."
+        return 1
+    fi
+    if ! "$INFERENCE_VENV_BIN/python" -c 'import ultralytics, uvicorn' >/dev/null 2>&1; then
+        echo "SmartHomeBridge inference dependencies are incomplete. Install smart-home-bridge[inference] in the inference venv or use Docker inference."
+        return 1
+    fi
     if [ -f "$INFERENCE_PID_FILE" ] && kill -0 "$(cat "$INFERENCE_PID_FILE")" 2>/dev/null; then
         echo "SmartHomeBridge inference already running"
         return 0
     fi
-    nohup smart-home-inference >> "$INFERENCE_LOG_FILE" 2>&1 &
+    nohup "$INFERENCE_VENV_BIN/smart-home-inference" >> "$INFERENCE_LOG_FILE" 2>&1 &
     echo "$!" > "$INFERENCE_PID_FILE"
     echo "SmartHomeBridge inference started"
 }
@@ -79,7 +87,6 @@ service_status() {
 
 case "$COMMAND" in
     start)
-        start_inference
         start_bridge
         ;;
     stop)
@@ -88,8 +95,6 @@ case "$COMMAND" in
         ;;
     restart)
         stop_bridge
-        stop_inference
-        start_inference
         start_bridge
         ;;
     start-bridge)
@@ -103,6 +108,10 @@ case "$COMMAND" in
         ;;
     stop-inference)
         stop_inference
+        ;;
+    install-inference)
+        echo "LoxBerry plugin install does not install inference dependencies because Torch/Ultralytics can require multiple GB of disk space."
+        echo "Run the inference service with Docker or install smart-home-bridge[inference] manually on a larger host."
         ;;
     status)
         service_status
@@ -124,7 +133,7 @@ case "$COMMAND" in
         esac
         ;;
     *)
-        echo "Usage: $0 {start|stop|restart|start-bridge|stop-bridge|start-inference|stop-inference|status|dump-config|door-command}" >&2
+        echo "Usage: $0 {start|stop|restart|start-bridge|stop-bridge|start-inference|stop-inference|install-inference|status|dump-config|door-command}" >&2
         exit 2
         ;;
 esac

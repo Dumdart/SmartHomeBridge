@@ -36,6 +36,7 @@ def test_bridge_ctl_uses_fixed_commands_and_loxberry_paths():
         "stop-bridge)",
         "start-inference)",
         "stop-inference)",
+        "install-inference)",
         "status)",
         "dump-config)",
         "door-command)",
@@ -43,6 +44,7 @@ def test_bridge_ctl_uses_fixed_commands_and_loxberry_paths():
         assert command in script
     assert "smart-home-bridge-status" in script
     assert "smart-home-inference" in script
+    assert '"$INFERENCE_VENV_BIN/smart-home-inference"' in script
     assert "smart-home-bridge-config-check" in script
     assert "smart-home-bridge-door-command" in script
 
@@ -68,6 +70,8 @@ def test_loxberry_panel_exposes_settings_manual_commands_and_log_tail():
     assert "CHICKEN_THREAT_INFERENCE_URL" in panel
     assert "start-inference" in panel
     assert "stop-inference" in panel
+    assert "install-inference" in panel
+    assert "Inference Install Info" in panel
     assert "escapeshellcmd($bridgeCtl) . ' door-command '" in panel
     assert "escapeshellarg($doorCommand)" in panel
 
@@ -102,13 +106,11 @@ def test_loxberry_lifecycle_installs_backend_into_plugin_venv():
     assert 'INFERENCE_VENV_DIR="${DATA_DIR}/inference-venv"' in postinstall
     assert 'python3 -m venv "$VENV_DIR"' in postinstall
     assert '"$VENV_BIN/python" -m pip install --upgrade "$PACKAGE_DIR"' in postinstall
-    assert 'python3 -m venv "$INFERENCE_VENV_DIR"' in postinstall
-    assert (
-        '"$INFERENCE_VENV_BIN/python" -m pip install --upgrade "$PACKAGE_DIR[inference]"'
-        in postinstall
-    )
+    assert 'mkdir -p "$INFERENCE_VENV_BIN"' in postinstall
+    assert '"$PACKAGE_DIR[inference]"' not in postinstall
+    assert "inference backend skipped during LoxBerry install" in postinstall
     assert 'ln -sf "$VENV_BIN/$command" "$BIN_DIR/$command"' in postinstall
-    assert 'ln -sf "$INFERENCE_VENV_BIN/$command" "$BIN_DIR/$command"' in postinstall
+    assert 'ln -sf "$INFERENCE_VENV_BIN/$command" "$BIN_DIR/$command"' not in postinstall
 
 
 def test_loxberry_plugin_cfg_declares_interface_in_system_section():
