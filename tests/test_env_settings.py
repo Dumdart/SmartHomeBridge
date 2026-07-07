@@ -108,7 +108,8 @@ def test_env_settings_saves_critical_runtime_settings(tmp_path):
         camera=CameraConfig(host="esp32cam.local", port=81, auth_token="camera-token"),
         chicken_threat=ChickenThreatConfig(
             enabled=True,
-            model_path="/models/chicken.pt",
+            inference_url="http://inference.local:8090/v1/chicken-threat/infer",
+            inference_timeout_seconds=8,
             poll_interval_seconds=15,
         ),
         log_level="DEBUG",
@@ -120,6 +121,11 @@ def test_env_settings_saves_critical_runtime_settings(tmp_path):
     assert "CAMERA_PORT=81" in content
     assert "CAMERA_AUTH_TOKEN=camera-token" in content
     assert "CHICKEN_THREAT_ENABLED=true" in content
+    assert (
+        "CHICKEN_THREAT_INFERENCE_URL=http://inference.local:8090/v1/chicken-threat/infer"
+        in content
+    )
+    assert "CHICKEN_THREAT_INFERENCE_TIMEOUT_SECONDS=8" in content
     assert "CHICKEN_THREAT_POLL_INTERVAL_SECONDS=15" in content
     assert "LOG_LEVEL=DEBUG" in content
     assert config.mqtt.use_tls is True

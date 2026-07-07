@@ -7,7 +7,11 @@ from starlette.testclient import TestClient
 from smart_home_contracts.chicken_thread import BoundingBox, Detection, DetectionFrame
 from smart_home_inference.api import create_app
 from smart_home_inference.exceptions import ImageTooLargeError, InvalidImageError
-from smart_home_inference.models.chicken_thread import ChickenThreatInferenceService
+from smart_home_inference.models.chicken_thread import (
+    ChickenThreatInferenceService,
+    LocalChickenThreadDetector,
+    _decode_jpeg,
+)
 from smart_home_inference.registry import ModelRegistry
 
 
@@ -160,6 +164,86 @@ def test_model_registry_resolves_known_models_and_rejects_unknown_models():
         raise AssertionError("Expected unknown model to be rejected")
 
 
+def test_local_detector_maps_fake_model_result_to_detection_frame():
+    class FakeValue:
+        def __init__(self, value):
+            self.value = value
+
+        def item(self):
+            return self.value
+
+    class FakeCoordinates:
+        def __getitem__(self, index):
+            assert index == 0
+            return self
+
+        def tolist(self):
+            return [0.1, 0.2, 0.3, 0.4]
+
+    class FakeBox:
+        cls = FakeValue(5)
+        conf = FakeValue(0.96)
+        xyxyn = FakeCoordinates()
+
+    class FakeResult:
+        names = {5: "fox"}
+        boxes = [FakeBox()]
+
+    class FakeYoloModel:
+        def predict(self, image, conf, imgsz, verbose):
+            assert image == "decoded-image"
+            assert conf == 0.35
+            assert imgsz == 640
+            assert verbose is False
+            return [FakeResult()]
+
+    detector = LocalChickenThreadDetector(model=FakeYoloModel())
+
+    frame = detector.detect("decoded-image", source="esp32cam")
+
+    assert frame.source == "esp32cam"
+    assert frame.detections[0].label == "wild_mammal_threat"
+    assert frame.detections[0].confidence == 0.96
+    assert frame.detections[0].box.left == 0.1
+
+
+def test_inference_service_decodes_jpeg_bytes_before_detection():
+    class FakeDetector:
+        def __init__(self):
+            self.calls = []
+
+        def detect(self, image, source=None):
+            self.calls.append((image, source))
+            return {"frame": source}
+
+    fake_detector = FakeDetector()
+    service = ChickenThreatInferenceService(
+        detector=fake_detector,
+        image_decoder=lambda image_bytes: f"decoded:{image_bytes.decode()}",
+    )
+
+    frame = service.detect(b"jpeg-bytes", source="esp32cam")
+
+    assert frame == {"frame": "esp32cam"}
+    assert fake_detector.calls == [("decoded:jpeg-bytes", "esp32cam")]
+
+
+def test_inference_decoder_rejects_oversized_image(monkeypatch):
+    from smart_home_inference.models.chicken_thread import inference
+
+    def reject_image(_image):
+        raise RuntimeError("Image exceeds 4000000 pixels: test")
+
+    monkeypatch.setattr(inference, "validate_image_size", reject_image)
+
+    try:
+        _decode_jpeg(_jpeg_bytes())
+    except RuntimeError as exc:
+        assert "exceeds 4000000 pixels" in str(exc)
+    else:
+        raise AssertionError("Expected oversized inference image to be rejected")
+
+
 def test_inference_backend_does_not_import_bridge_runtime_modules():
     inference_root = Path("src/smart_home_inference")
 
@@ -189,9 +273,37 @@ def test_bridge_runtime_dependencies_do_not_include_inference_only_packages():
     assert "ultralytics" in inference_dependencies
 
 
+def test_bridge_runtime_modules_do_not_import_inference_backend_modules():
+    bridge_root = Path("src/smart_home_bridge")
+
+    for path in bridge_root.rglob("*.py"):
+        tree = ast.parse(path.read_text(), filename=str(path))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                imported_names = [alias.name for alias in node.names]
+            elif isinstance(node, ast.ImportFrom):
+                imported_names = [node.module or ""]
+            else:
+                continue
+
+            assert all(
+                not name.startswith("smart_home_inference") for name in imported_names
+            ), f"{path} imports an inference backend module"
+
+
 class FakeDetector:
     def ready(self):
         return True, None
 
     def detect(self, image, source=None):
         return DetectionFrame(source=source)
+
+
+def _jpeg_bytes() -> bytes:
+    from io import BytesIO
+
+    from PIL import Image
+
+    output = BytesIO()
+    Image.new("RGB", (10, 10), "white").save(output, format="JPEG")
+    return output.getvalue()

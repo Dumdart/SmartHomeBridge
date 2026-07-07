@@ -1,11 +1,11 @@
 import asyncio
 import json
-from io import BytesIO
 from types import SimpleNamespace
 
 import pytest
 
 from smart_home_bridge.bridge_devices.chicken_thread_detector import (
+    ChickenThreatInferenceClient,
     DangerScorer,
     chicken_thread_detector,
     chicken_thread_detector_controller,
@@ -16,9 +16,6 @@ from smart_home_bridge.bridge_devices.chicken_thread_detector.chicken_thread_det
     MAX_DETECTOR_PAYLOAD_BYTES,
     handle_chicken_thread_detector_mqtt_message,
 )
-from smart_home_bridge.bridge_devices.chicken_thread_detector.image_limits import (
-    MAX_IMAGE_PIXELS,
-)
 from smart_home_bridge.config import (
     CameraConfig,
     ChickenThreatConfig,
@@ -28,11 +25,6 @@ from smart_home_bridge.config import (
     app_config,
 )
 from smart_home_contracts.chicken_thread import DetectionFrame, Detection, ThreatLevel
-from smart_home_inference.models.chicken_thread import (
-    ChickenThreatInferenceService,
-    LocalChickenThreadDetector,
-    _decode_jpeg,
-)
 
 
 def test_danger_scorer_maps_wild_mammal_alias_to_critical_threat():
@@ -209,84 +201,40 @@ def test_mqtt_callback_swallows_invalid_detection_payloads():
     assert detector.assessment.level == ThreatLevel.NONE
 
 
-def test_local_detector_maps_fake_model_result_to_detection_frame():
-    class FakeValue:
-        def __init__(self, value):
-            self.value = value
+def test_http_inference_client_posts_jpeg_and_decodes_detection_frame(monkeypatch):
+    requests = []
 
-        def item(self):
-            return self.value
-
-    class FakeCoordinates:
-        def __getitem__(self, index):
-            assert index == 0
+    class FakeResponse:
+        def __enter__(self):
             return self
 
-        def tolist(self):
-            return [0.1, 0.2, 0.3, 0.4]
+        def __exit__(self, _exc_type, _exc, _traceback):
+            return False
 
-    class FakeBox:
-        cls = FakeValue(5)
-        conf = FakeValue(0.96)
-        xyxyn = FakeCoordinates()
+        def read(self):
+            return json.dumps(
+                {"detections": [{"label": "dog", "confidence": 0.9}], "source": None}
+            ).encode()
 
-    class FakeResult:
-        names = {5: "fox"}
-        boxes = [FakeBox()]
+    def fake_urlopen(request, timeout):
+        requests.append((request, timeout))
+        return FakeResponse()
 
-    class FakeModel:
-        def predict(self, image, conf, imgsz, verbose):
-            assert image == "decoded-image"
-            assert conf == 0.35
-            assert imgsz == 640
-            assert verbose is False
-            return [FakeResult()]
+    monkeypatch.setattr(
+        "smart_home_bridge.bridge_devices.chicken_thread_detector.inference.urlopen",
+        fake_urlopen,
+    )
+    client = ChickenThreatInferenceClient("http://inference.local/infer", 3)
 
-    detector = LocalChickenThreadDetector(model=FakeModel())
-
-    frame = detector.detect("decoded-image", source="esp32cam")
+    frame = client.detect(b"\xff\xd8frame", source="esp32cam")
 
     assert frame.source == "esp32cam"
-    assert frame.detections[0].label == "wild_mammal_threat"
-    assert frame.detections[0].confidence == 0.96
-    assert frame.detections[0].box.left == 0.1
-
-
-def test_inference_service_decodes_jpeg_bytes_before_detection():
-    class FakeDetector:
-        def __init__(self):
-            self.calls = []
-
-        def detect(self, image, source=None):
-            self.calls.append((image, source))
-            return {"frame": source}
-
-    fake_detector = FakeDetector()
-    service = ChickenThreatInferenceService(
-        detector=fake_detector,
-        image_decoder=lambda image_bytes: f"decoded:{image_bytes.decode()}",
-    )
-
-    frame = service.detect(b"jpeg-bytes", source="esp32cam")
-
-    assert frame == {"frame": "esp32cam"}
-    assert fake_detector.calls == [("decoded:jpeg-bytes", "esp32cam")]
-
-
-def test_inference_decoder_rejects_oversized_image(monkeypatch):
-    from smart_home_inference.models.chicken_thread import inference
-
-    def reject_image(_image):
-        raise RuntimeError(f"Camera image exceeds {MAX_IMAGE_PIXELS} pixels: test")
-
-    monkeypatch.setattr(inference, "validate_image_size", reject_image)
-
-    try:
-        _decode_jpeg(_jpeg_bytes())
-    except RuntimeError as exc:
-        assert f"exceeds {MAX_IMAGE_PIXELS} pixels" in str(exc)
-    else:
-        raise AssertionError("Expected oversized inference image to be rejected")
+    assert frame.detections[0].label == "dog"
+    request, timeout = requests[0]
+    assert request.full_url == "http://inference.local/infer"
+    assert request.headers["Content-type"] == "image/jpeg"
+    assert request.data == b"\xff\xd8frame"
+    assert timeout == 3
 
 
 def test_application_wires_thread_detector_to_mqtt_publish():
@@ -387,7 +335,7 @@ def test_application_wires_independent_camera_threat_pipeline():
         camera=CameraConfig(host="esp32cam.local", port=80),
         chicken_threat=ChickenThreatConfig(
             enabled=True,
-            model_path="/models/chicken_threat_detector_best.pt",
+            inference_url="http://inference.local:8090/v1/chicken-threat/infer",
             poll_interval_seconds=7,
         ),
     )
@@ -397,7 +345,10 @@ def test_application_wires_independent_camera_threat_pipeline():
     assert app.chicken_threat_pipeline is not None
     assert app.chicken_threat_pipeline.camera_client.config == config.camera
     assert app.chicken_threat_pipeline.poll_interval_seconds == 7
-    assert app.thread_model_config.model_path == "/models/chicken_threat_detector_best.pt"
+    assert (
+        app.threat_inference_service.inference_url
+        == "http://inference.local:8090/v1/chicken-threat/infer"
+    )
     assert app.http_gate is app.composition.http_gate
 
 
@@ -473,11 +424,3 @@ def test_threat_pipeline_run_publishes_assessment():
     assert usage_payload["score"] == 0.675
     assert usage_payload["detection_count"] == 1
     assert "timestamp" in usage_payload
-
-
-def _jpeg_bytes() -> bytes:
-    from PIL import Image
-
-    output = BytesIO()
-    Image.new("RGB", (10, 10), "white").save(output, format="JPEG")
-    return output.getvalue()

@@ -23,6 +23,7 @@ def test_bridge_ctl_uses_fixed_commands_and_loxberry_paths():
     assert "LBPDATA" in script
     assert "LBPLOG" in script
     assert 'VENV_BIN="${LBPDATA}/${PLUGIN_FOLDER}/venv/bin"' in script
+    assert 'INFERENCE_VENV_BIN="${LBPDATA}/${PLUGIN_FOLDER}/inference-venv/bin"' in script
     assert 'PLUGIN_FOLDER="${PLUGIN_FOLDER:-smarthomebridge}"' in script
     assert 'BIN_DIR="${LBPBIN}/${PLUGIN_FOLDER}"' in script
     assert 'LOG_DIR="${LBPLOG:-./logs}/${PLUGIN_FOLDER}"' in script
@@ -31,12 +32,17 @@ def test_bridge_ctl_uses_fixed_commands_and_loxberry_paths():
         "start)",
         "stop)",
         "restart)",
+        "start-bridge)",
+        "stop-bridge)",
+        "start-inference)",
+        "stop-inference)",
         "status)",
         "dump-config)",
         "door-command)",
     ):
         assert command in script
     assert "smart-home-bridge-status" in script
+    assert "smart-home-inference" in script
     assert "smart-home-bridge-config-check" in script
     assert "smart-home-bridge-door-command" in script
 
@@ -59,6 +65,9 @@ def test_loxberry_panel_exposes_settings_manual_commands_and_log_tail():
     assert "DOOR_API_KEY" in panel
     assert "CAMERA_HOST" in panel
     assert "CHICKEN_THREAT_ENABLED" in panel
+    assert "CHICKEN_THREAT_INFERENCE_URL" in panel
+    assert "start-inference" in panel
+    assert "stop-inference" in panel
     assert "escapeshellcmd($bridgeCtl) . ' door-command '" in panel
     assert "escapeshellarg($doorCommand)" in panel
 
@@ -90,9 +99,16 @@ def test_loxberry_lifecycle_installs_backend_into_plugin_venv():
     assert 'DATA_DIR="${LBPDATA:?}/${PLUGIN_FOLDER}"' in postinstall
     assert 'PACKAGE_DIR="${DATA_DIR}/python-package"' in postinstall
     assert 'VENV_DIR="${DATA_DIR}/venv"' in postinstall
+    assert 'INFERENCE_VENV_DIR="${DATA_DIR}/inference-venv"' in postinstall
     assert 'python3 -m venv "$VENV_DIR"' in postinstall
     assert '"$VENV_BIN/python" -m pip install --upgrade "$PACKAGE_DIR"' in postinstall
+    assert 'python3 -m venv "$INFERENCE_VENV_DIR"' in postinstall
+    assert (
+        '"$INFERENCE_VENV_BIN/python" -m pip install --upgrade "$PACKAGE_DIR[inference]"'
+        in postinstall
+    )
     assert 'ln -sf "$VENV_BIN/$command" "$BIN_DIR/$command"' in postinstall
+    assert 'ln -sf "$INFERENCE_VENV_BIN/$command" "$BIN_DIR/$command"' in postinstall
 
 
 def test_loxberry_plugin_cfg_declares_interface_in_system_section():

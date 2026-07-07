@@ -1,7 +1,7 @@
 import json
 
 from smart_home_bridge.config import (
-    DEFAULT_CHICKEN_THREAT_MODEL_PATH,
+    DEFAULT_CHICKEN_THREAT_INFERENCE_URL,
     load_config,
     load_config_from_environment,
     load_loxberry_config,
@@ -93,7 +93,8 @@ def test_load_config_reads_independent_camera_and_threat_settings(tmp_path):
                 "CAMERA_MAX_JPEG_BYTES=123456",
                 "CAMERA_AUTH_TOKEN=camera-token",
                 "CHICKEN_THREAT_ENABLED=true",
-                "CHICKEN_THREAT_MODEL_PATH=/models/chicken_threat_detector_best.pt",
+                "CHICKEN_THREAT_INFERENCE_URL=http://inference.local:8090/v1/chicken-threat/infer",
+                "CHICKEN_THREAT_INFERENCE_TIMEOUT_SECONDS=12",
                 "CHICKEN_THREAT_POLL_INTERVAL_SECONDS=7.5",
             ]
         )
@@ -110,7 +111,11 @@ def test_load_config_reads_independent_camera_and_threat_settings(tmp_path):
     assert config.camera.max_jpeg_bytes == 123456
     assert config.camera.auth_token == "camera-token"
     assert config.chicken_threat.enabled is True
-    assert config.chicken_threat.model_path == "/models/chicken_threat_detector_best.pt"
+    assert (
+        config.chicken_threat.inference_url
+        == "http://inference.local:8090/v1/chicken-threat/infer"
+    )
+    assert config.chicken_threat.inference_timeout_seconds == 12
     assert config.chicken_threat.poll_interval_seconds == 7.5
 
 
@@ -157,7 +162,7 @@ def test_load_config_reads_bridge_device_settings(tmp_path):
 
 def test_load_config_disables_chicken_threat_by_default(tmp_path, monkeypatch):
     monkeypatch.delenv("CHICKEN_THREAT_ENABLED", raising=False)
-    monkeypatch.delenv("CHICKEN_THREAT_MODEL_PATH", raising=False)
+    monkeypatch.delenv("CHICKEN_THREAT_INFERENCE_URL", raising=False)
     env_path = tmp_path / ".env"
     env_path.write_text(
         "\n".join(
@@ -177,7 +182,7 @@ def test_load_config_disables_chicken_threat_by_default(tmp_path, monkeypatch):
     config = load_config(str(env_path), override=True)
 
     assert config.chicken_threat.enabled is False
-    assert config.chicken_threat.model_path == DEFAULT_CHICKEN_THREAT_MODEL_PATH
+    assert config.chicken_threat.inference_url == DEFAULT_CHICKEN_THREAT_INFERENCE_URL
 
 
 def test_load_config_requires_door_api_key(tmp_path, monkeypatch):
@@ -263,6 +268,8 @@ def test_load_loxberry_config_reads_mqtt_json_and_plugin_ini(tmp_path):
                 "CAMERA_HOST=esp32cam.local",
                 "CAMERA_PORT=81",
                 "CHICKEN_THREAT_ENABLED=true",
+                "CHICKEN_THREAT_INFERENCE_URL=http://127.0.0.1:8090/v1/chicken-threat/infer",
+                "CHICKEN_THREAT_INFERENCE_TIMEOUT_SECONDS=9",
                 "CHICKEN_THREAT_POLL_INTERVAL_SECONDS=12.5",
                 "LOG_LEVEL=DEBUG",
             ]
@@ -282,6 +289,11 @@ def test_load_loxberry_config_reads_mqtt_json_and_plugin_ini(tmp_path):
     assert config.camera.host == "esp32cam.local"
     assert config.camera.port == 81
     assert config.chicken_threat.enabled is True
+    assert (
+        config.chicken_threat.inference_url
+        == "http://127.0.0.1:8090/v1/chicken-threat/infer"
+    )
+    assert config.chicken_threat.inference_timeout_seconds == 9
     assert config.chicken_threat.poll_interval_seconds == 12.5
 
 

@@ -64,7 +64,7 @@ def _config(log_file_path: str = "logs/smart-home-bridge.log"):
         camera=CameraConfig(host="esp32cam.local", port=80, jpg_endpoint="/jpg"),
         chicken_threat=ChickenThreatConfig(
             enabled=True,
-            model_path="/models/chicken_threat_detector_best.pt",
+            inference_url="http://inference.local:8090/v1/chicken-threat/infer",
             poll_interval_seconds=7,
         ),
     )
@@ -145,8 +145,8 @@ def test_gui_context_wires_chicken_threat_detector():
     assert context.detector_topic == "loxone/chicken-thread-detector"
     assert context.threat_scan_service.camera_client.config == context.config.camera
     assert (
-        context.threat_scan_service.inference_service.detector.config.model_path
-        == "/models/chicken_threat_detector_best.pt"
+        context.threat_scan_service.inference_service.inference_url
+        == "http://inference.local:8090/v1/chicken-threat/infer"
     )
 
 
