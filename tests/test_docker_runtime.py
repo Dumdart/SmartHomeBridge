@@ -29,3 +29,12 @@ def test_compose_splits_bridge_and_inference_profiles():
     assert 'profiles: ["inference"]' in compose
     assert "CHICKEN_THREAT_INFERENCE_URL" in compose
     assert "smart-home-bridge-gui" not in compose
+
+
+def test_docs_include_inference_only_compose_command():
+    readme = Path("README.MD").read_text()
+    technical = Path("TECHNICAL.MD").read_text()
+    command = "docker compose --profile inference up -d smart-home-inference"
+
+    assert command in readme
+    assert command in technical

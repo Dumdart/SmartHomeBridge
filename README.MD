@@ -3,7 +3,7 @@
 Smart Home Bridge connects LAN smart home systems to devices that are awkward to
 integrate directly. It normalizes device commands and state through MQTT so a
 controller such as Loxone can use stable topics instead of calling vendor APIs,
-camera endpoints, or local inference code itself.
+camera endpoints, or inference APIs itself.
 
 The current bridge supports:
 
@@ -12,10 +12,10 @@ The current bridge supports:
   battery, and light level
 - Chicken threat assessment from either injected MQTT detection payloads or an
   optional ESP32-CAM polling pipeline
-- Local YOLO-based camera inference with the packaged
-  `chicken_threat_detector_best_v3.pt` model
+- Split inference backend with YOLO-based chicken threat detection and the
+  packaged `chicken_threat_detector_best_v3.pt` model
 - Optional PySide6 desktop diagnostics and manual controls
-- Docker runtime for the backend service
+- Docker runtimes for the bridge service and optional inference service
 - LoxBerry plugin packaging, settings, service control, log tail, and manual
   door command publishing
 
@@ -46,13 +46,21 @@ pip install -e ".[inference]"
 smart-home-bridge
 ```
 
-4. Run the optional desktop GUI:
+4. Run the optional inference backend when camera threat polling is enabled:
+
+```bash
+smart-home-inference
+```
+
+The inference backend requires the `inference` extra.
+
+5. Run the optional desktop GUI:
 
 ```bash
 smart-home-bridge-gui
 ```
 
-5. Check configuration or publish a manual door command:
+6. Check configuration or publish a manual door command:
 
 ```bash
 smart-home-bridge-config-check
@@ -63,7 +71,7 @@ smart-home-bridge-door-command open_door
 Supported door commands are `open_door`, `close_door`, `stop_door`, and
 `get_door_state`.
 
-6. Run tests:
+7. Run tests:
 
 ```bash
 pytest
@@ -83,28 +91,49 @@ Required values are:
 
 Common optional values include `MQTT_PORT`, `MQTT_USE_TLS`, `HTTP_HOST`,
 `HTTP_PORT`, `LOG_LEVEL`, `LOG_FILE_PATH`, `BRIDGE_DEVICES_ENABLED`,
-`CAMERA_HOST`, `CAMERA_PORT`, and `CHICKEN_THREAT_ENABLED`.
+`CAMERA_HOST`, `CAMERA_PORT`, `CHICKEN_THREAT_ENABLED`,
+`CHICKEN_THREAT_INFERENCE_URL`, and
+`CHICKEN_THREAT_POLL_INTERVAL_SECONDS`.
 
 Set `MQTT_BASE_TOPIC` to the namespace only, for example
 `smart-home-bridge`. Device topics are appended by the bridge.
 
 ## Docker
 
-Run the backend with Docker Compose:
+Run the bridge with Docker Compose:
 
 ```bash
 docker compose up -d
 ```
 
-Build the image directly:
+Run the bridge plus inference backend:
+
+```bash
+docker compose --profile inference up -d
+```
+
+Run only the inference backend:
+
+```bash
+docker compose --profile inference up -d smart-home-inference
+```
+
+Build the bridge image directly:
 
 ```bash
 docker build -t smart-home-bridge:local .
 ```
 
-Docker runs only the backend service. The image installs inference dependencies
-but not the optional PySide6 GUI dependencies, and the container command is
-`smart-home-bridge`.
+Build the inference image directly:
+
+```bash
+docker build -f Dockerfile.inference -t smart-home-inference:local .
+```
+
+The bridge image installs only bridge runtime dependencies and runs
+`smart-home-bridge`. The inference image installs `.[inference]` and runs
+`smart-home-inference`. Neither image installs the optional PySide6 GUI
+dependencies.
 
 ## LoxBerry Plugin
 
@@ -122,12 +151,19 @@ When `SMART_HOME_BRIDGE_CONFIG_SOURCE=loxberry`, the bridge reads MQTT broker
 settings from LoxBerry's system MQTT configuration and bridge-specific settings
 from `smart-home-bridge.ini`.
 
+The plugin installs only the bridge runtime during LoxBerry installation.
+Inference dependencies such as Torch and Ultralytics can require multiple GB of
+disk space, so run inference with Docker or install `.[inference]` manually in
+the inference venv on a larger host. `bridge_ctl.sh start` starts the bridge;
+separate `start-bridge`, `stop-bridge`, `start-inference`, `stop-inference`, and
+`install-inference` info commands are also available from the web UI.
+
 ## GUI
 
 The GUI is for local diagnostics and manual operation. It can show bridge
 status, MQTT topics, current door state, activity logs, camera/detector status,
-one-off threat inference results, and annotated camera frames. It can also write
-selected MQTT and HTTP settings back to `.env`.
+one-off threat inference results from the HTTP inference backend, and annotated
+camera frames. It can also write selected MQTT and HTTP settings back to `.env`.
 
 ## Safety
 

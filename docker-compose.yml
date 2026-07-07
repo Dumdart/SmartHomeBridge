@@ -3,6 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: runtime
     image: smart-home-bridge:local
     container_name: smart-home-bridge
     command: ["smart-home-bridge"]
@@ -20,6 +21,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.inference
+      target: runtime
     image: smart-home-inference:local
     container_name: smart-home-inference
     command: ["smart-home-inference"]
