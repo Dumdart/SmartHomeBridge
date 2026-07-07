@@ -2,12 +2,30 @@ services:
   smart-home-bridge:
     build:
       context: .
+      dockerfile: Dockerfile
     image: smart-home-bridge:local
     container_name: smart-home-bridge
     command: ["smart-home-bridge"]
     env_file:
       - .env
+    environment:
+      CHICKEN_THREAT_INFERENCE_URL: ${CHICKEN_THREAT_INFERENCE_URL:-http://smart-home-inference:8090/v1/chicken-threat/infer}
     restart: unless-stopped
     init: true
     ports:
       - "${HTTP_PORT:-8080}:${HTTP_PORT:-8080}"
+
+  smart-home-inference:
+    profiles: ["inference"]
+    build:
+      context: .
+      dockerfile: Dockerfile.inference
+    image: smart-home-inference:local
+    container_name: smart-home-inference
+    command: ["smart-home-inference"]
+    env_file:
+      - .env
+    restart: unless-stopped
+    init: true
+    ports:
+      - "${INFERENCE_HTTP_PORT:-8090}:${INFERENCE_HTTP_PORT:-8090}"
