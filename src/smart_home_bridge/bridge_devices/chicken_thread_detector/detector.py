@@ -1,3 +1,8 @@
-from smart_home_inference.models.chicken_thread.detector import LocalChickenThreadDetector
+class LocalChickenThreadDetector:
+    def __init__(self, *args, **kwargs):
+        raise RuntimeError(
+            "LocalChickenThreadDetector moved to smart_home_inference. "
+            "Bridge runtime uses ChickenThreatInferenceClient."
+        )
 
 __all__ = ["LocalChickenThreadDetector"]

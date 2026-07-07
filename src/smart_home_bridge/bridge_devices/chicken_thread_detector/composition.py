@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from smart_home_bridge.bridge_devices.chicken_thread_detector import (
     ChickenThreatDetectionPipeline,
-    ChickenThreatInferenceService,
+    ChickenThreatInferenceClient,
     DangerScorer,
-    LocalChickenThreadDetector,
     chicken_thread_detector,
     chicken_thread_detector_controller,
     chicken_thread_detector_mqtt_callbacks,
@@ -33,7 +32,7 @@ def create_chicken_thread_detector_composition(
         "detections",
         CHICKEN_THREAD_DETECTOR_TOPIC,
     )
-    model_config = default_model_config(config.chicken_threat.model_path)
+    model_config = default_model_config()
     detector = chicken_thread_detector(
         device_config.device_id or 2,
         device_config.name or "chicken_thread_detector",
@@ -43,8 +42,9 @@ def create_chicken_thread_detector_composition(
         danger_scorer=DangerScorer(model_config),
     )
     camera_client = CameraClient(config.camera)
-    inference_service = ChickenThreatInferenceService(
-        LocalChickenThreadDetector(model_config),
+    inference_service = ChickenThreatInferenceClient(
+        config.chicken_threat.inference_url,
+        timeout_seconds=config.chicken_threat.inference_timeout_seconds,
     )
 
     def create_runtime(mqtt_client_factory: MqttClientFactory) -> BridgeDeviceRuntime:
@@ -106,7 +106,7 @@ def create_chicken_thread_detector_composition(
 def create_chicken_threat_pipeline(
     config: app_config,
     camera_client: CameraClient,
-    inference_service: ChickenThreatInferenceService,
+    inference_service: ChickenThreatInferenceClient,
     controller: chicken_thread_detector_controller,
 ) -> ChickenThreatDetectionPipeline | None:
     if not config.chicken_threat.enabled:
