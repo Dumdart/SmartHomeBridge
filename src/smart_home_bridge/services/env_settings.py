@@ -56,7 +56,10 @@ class EnvSettingsService:
             "CAMERA_MAX_JPEG_BYTES": str(camera.max_jpeg_bytes),
             "CAMERA_AUTH_TOKEN": camera.auth_token,
             "CHICKEN_THREAT_ENABLED": _format_bool(chicken_threat.enabled),
-            "CHICKEN_THREAT_MODEL_PATH": chicken_threat.model_path,
+            "CHICKEN_THREAT_INFERENCE_URL": chicken_threat.inference_url,
+            "CHICKEN_THREAT_INFERENCE_TIMEOUT_SECONDS": str(
+                chicken_threat.inference_timeout_seconds
+            ),
             "CHICKEN_THREAT_POLL_INTERVAL_SECONDS": str(
                 chicken_threat.poll_interval_seconds
             ),
