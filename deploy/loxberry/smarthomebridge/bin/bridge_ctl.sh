@@ -8,12 +8,14 @@ PLUGIN_FOLDER="${PLUGIN_FOLDER:-smarthomebridge}"
 LBPBIN="${LBPBIN:-./bin}"
 LBPCONFIG="${LBPCONFIG:-./config}"
 LBHOMEDIR="${LBHOMEDIR:-./loxberry}"
+LBPDATA="${LBPDATA:-./data}"
 BIN_DIR="${LBPBIN}/${PLUGIN_FOLDER}"
+VENV_BIN="${LBPDATA}/${PLUGIN_FOLDER}/venv/bin"
 LOG_DIR="${LBPLOG:-./logs}/${PLUGIN_FOLDER}"
 PID_FILE="${LOG_DIR}/smart-home-bridge.pid"
 LOG_FILE="${LOG_DIR}/smart-home-bridge.log"
-export LBPBIN LBPCONFIG LBHOMEDIR
-PATH="${BIN_DIR}:${LBPBIN}:$PATH"
+export LBPBIN LBPCONFIG LBHOMEDIR LBPDATA
+PATH="${VENV_BIN}:${BIN_DIR}:${LBPBIN}:$PATH"
 
 start_bridge() {
     mkdir -p "$LOG_DIR"
