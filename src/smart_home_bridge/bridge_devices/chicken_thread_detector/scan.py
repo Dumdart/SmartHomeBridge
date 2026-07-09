@@ -9,7 +9,7 @@ from smart_home_bridge.bridge_devices.chicken_thread_detector.inference import (
 )
 from smart_home_bridge.core.command import command_result
 from smart_home_bridge.infrastructure.camera import CameraClientInterface
-from smart_home_bridge.models import DangerAssessment, DetectionFrame
+from smart_home_contracts.chicken_thread import DangerAssessment, DetectionFrame
 
 
 @dataclass(frozen=True)

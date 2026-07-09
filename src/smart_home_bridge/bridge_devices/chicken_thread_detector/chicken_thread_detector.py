@@ -1,5 +1,5 @@
 from smart_home_bridge.core.device import device
-from smart_home_bridge.models import DangerAssessment, ThreatLevel
+from smart_home_contracts.chicken_thread import DangerAssessment, ThreatLevel
 
 
 class chicken_thread_detector(device):

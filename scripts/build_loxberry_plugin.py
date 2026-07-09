@@ -18,6 +18,11 @@ PYTHON_PACKAGE_FILES = (
     PROJECT_ROOT / "pyproject.toml",
     PROJECT_ROOT / "README.MD",
 )
+PYTHON_PACKAGE_SOURCE_DIRS = (
+    PROJECT_ROOT / "src" / "smart_home_bridge",
+    PROJECT_ROOT / "src" / "smart_home_contracts",
+    PROJECT_ROOT / "src" / "smart_home_inference",
+)
 
 
 def create_png_icon(size: int) -> bytes:
@@ -108,12 +113,12 @@ def build_plugin_archive(
         for path in PYTHON_PACKAGE_FILES:
             archive.write(path, f"{PYTHON_PACKAGE_ROOT}/{path.name}")
 
-        package_src = PROJECT_ROOT / "src" / "smart_home_bridge"
-        for path in sorted(package_src.rglob("*")):
-            if not should_include_python_source(path):
-                continue
-            relative_path = path.relative_to(PROJECT_ROOT).as_posix()
-            archive.write(path, f"{PYTHON_PACKAGE_ROOT}/{relative_path}")
+        for package_src in PYTHON_PACKAGE_SOURCE_DIRS:
+            for path in sorted(package_src.rglob("*")):
+                if not should_include_python_source(path):
+                    continue
+                relative_path = path.relative_to(PROJECT_ROOT).as_posix()
+                archive.write(path, f"{PYTHON_PACKAGE_ROOT}/{relative_path}")
 
     return output_path
 

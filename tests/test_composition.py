@@ -23,7 +23,10 @@ def test_bridge_composition_wires_shared_devices_and_topics():
     assert composition.door.position == door_position.UNKNOWN
     assert composition.door_controller.device is composition.door
     assert composition.threat_detector_controller.detector is composition.threat_detector
-    assert composition.threat_inference_service.detector.config is composition.threat_model_config
+    assert (
+        composition.threat_inference_service.inference_url
+        == config.chicken_threat.inference_url
+    )
     assert composition.command_topic == "loxone/chicken-door/command"
     assert composition.door_topics.status == "loxone/chicken-door/status"
     assert composition.door_topics.status_code == "loxone/chicken-door/status_code"
@@ -34,7 +37,8 @@ def test_thread_detector_runtime_exposes_enabled_threat_pipeline_as_lifecycle_se
     config = _config(
         chicken_threat=ChickenThreatConfig(
             enabled=True,
-            model_path="/models/chicken_threat_detector_best.pt",
+            inference_url="http://inference.local:8090/v1/chicken-threat/infer",
+            inference_timeout_seconds=11,
             poll_interval_seconds=7,
         ),
     )
@@ -48,6 +52,11 @@ def test_thread_detector_runtime_exposes_enabled_threat_pipeline_as_lifecycle_se
     assert pipeline is not None
     assert pipeline.camera_client is composition.camera_client
     assert pipeline.inference_service is composition.threat_inference_service
+    assert (
+        pipeline.inference_service.inference_url
+        == "http://inference.local:8090/v1/chicken-threat/infer"
+    )
+    assert pipeline.inference_service.timeout_seconds == 11
     assert pipeline.detector_controller is composition.threat_detector_controller
     assert pipeline.poll_interval_seconds == 7
     assert runtime.background_services == (pipeline,)

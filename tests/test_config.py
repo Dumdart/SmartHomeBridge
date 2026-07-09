@@ -1,7 +1,7 @@
 import json
 
 from smart_home_bridge.config import (
-    DEFAULT_CHICKEN_THREAT_MODEL_PATH,
+    DEFAULT_CHICKEN_THREAT_INFERENCE_URL,
     load_config,
     load_config_from_environment,
     load_loxberry_config,
@@ -93,7 +93,8 @@ def test_load_config_reads_independent_camera_and_threat_settings(tmp_path):
                 "CAMERA_MAX_JPEG_BYTES=123456",
                 "CAMERA_AUTH_TOKEN=camera-token",
                 "CHICKEN_THREAT_ENABLED=true",
-                "CHICKEN_THREAT_MODEL_PATH=/models/chicken_threat_detector_best.pt",
+                "CHICKEN_THREAT_INFERENCE_URL=http://inference.local:8090/v1/chicken-threat/infer",
+                "CHICKEN_THREAT_INFERENCE_TIMEOUT_SECONDS=12",
                 "CHICKEN_THREAT_POLL_INTERVAL_SECONDS=7.5",
             ]
         )
@@ -110,7 +111,11 @@ def test_load_config_reads_independent_camera_and_threat_settings(tmp_path):
     assert config.camera.max_jpeg_bytes == 123456
     assert config.camera.auth_token == "camera-token"
     assert config.chicken_threat.enabled is True
-    assert config.chicken_threat.model_path == "/models/chicken_threat_detector_best.pt"
+    assert (
+        config.chicken_threat.inference_url
+        == "http://inference.local:8090/v1/chicken-threat/infer"
+    )
+    assert config.chicken_threat.inference_timeout_seconds == 12
     assert config.chicken_threat.poll_interval_seconds == 7.5
 
 
@@ -157,7 +162,7 @@ def test_load_config_reads_bridge_device_settings(tmp_path):
 
 def test_load_config_disables_chicken_threat_by_default(tmp_path, monkeypatch):
     monkeypatch.delenv("CHICKEN_THREAT_ENABLED", raising=False)
-    monkeypatch.delenv("CHICKEN_THREAT_MODEL_PATH", raising=False)
+    monkeypatch.delenv("CHICKEN_THREAT_INFERENCE_URL", raising=False)
     env_path = tmp_path / ".env"
     env_path.write_text(
         "\n".join(
@@ -177,7 +182,7 @@ def test_load_config_disables_chicken_threat_by_default(tmp_path, monkeypatch):
     config = load_config(str(env_path), override=True)
 
     assert config.chicken_threat.enabled is False
-    assert config.chicken_threat.model_path == DEFAULT_CHICKEN_THREAT_MODEL_PATH
+    assert config.chicken_threat.inference_url == DEFAULT_CHICKEN_THREAT_INFERENCE_URL
 
 
 def test_load_config_requires_door_api_key(tmp_path, monkeypatch):
@@ -263,6 +268,8 @@ def test_load_loxberry_config_reads_mqtt_json_and_plugin_ini(tmp_path):
                 "CAMERA_HOST=esp32cam.local",
                 "CAMERA_PORT=81",
                 "CHICKEN_THREAT_ENABLED=true",
+                "CHICKEN_THREAT_INFERENCE_URL=http://127.0.0.1:8090/v1/chicken-threat/infer",
+                "CHICKEN_THREAT_INFERENCE_TIMEOUT_SECONDS=9",
                 "CHICKEN_THREAT_POLL_INTERVAL_SECONDS=12.5",
                 "LOG_LEVEL=DEBUG",
             ]
@@ -282,7 +289,47 @@ def test_load_loxberry_config_reads_mqtt_json_and_plugin_ini(tmp_path):
     assert config.camera.host == "esp32cam.local"
     assert config.camera.port == 81
     assert config.chicken_threat.enabled is True
+    assert (
+        config.chicken_threat.inference_url
+        == "http://127.0.0.1:8090/v1/chicken-threat/infer"
+    )
+    assert config.chicken_threat.inference_timeout_seconds == 9
     assert config.chicken_threat.poll_interval_seconds == 12.5
+
+
+def test_load_loxberry_config_resolves_default_log_file_to_plugin_log_dir(
+    tmp_path,
+    monkeypatch,
+):
+    home_dir = tmp_path / "loxberry"
+    plugin_config_dir = tmp_path / "config"
+    loxberry_log_dir = tmp_path / "logs"
+    mqtt_dir = home_dir / "config" / "system"
+    bridge_dir = plugin_config_dir / "smarthomebridge"
+    mqtt_dir.mkdir(parents=True)
+    bridge_dir.mkdir(parents=True)
+    monkeypatch.setenv("LBPLOG", str(loxberry_log_dir))
+    (mqtt_dir / "general.json").write_text(
+        json.dumps({"mqtt": {"host": "loxberry-mqtt.local", "port": 1883}})
+    )
+    (bridge_dir / "smart-home-bridge.ini").write_text(
+        "\n".join(
+            [
+                "[smart-home-bridge]",
+                "DOOR_API_KEY=api-key",
+                "DOOR_DEVICE_ID=device-id",
+                "MQTT_BASE_TOPIC=smart-home-bridge",
+                "LOG_FILE_PATH=logs/smart-home-bridge.log",
+            ]
+        )
+        + "\n"
+    )
+
+    config = load_loxberry_config(home_dir, plugin_config_dir)
+
+    assert config.log_file_path == str(
+        loxberry_log_dir / "smarthomebridge" / "smart-home-bridge.log"
+    )
 
 
 def test_load_loxberry_config_accepts_gateway_mqtt_fields_without_credentials(tmp_path):

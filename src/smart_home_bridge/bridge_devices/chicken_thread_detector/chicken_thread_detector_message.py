@@ -7,7 +7,7 @@ from typing import Any
 from smart_home_bridge.bridge_devices.chicken_thread_detector.chicken_thread_detector_controller import (
     chicken_thread_detector_controller,
 )
-from smart_home_bridge.models import DetectionFrame
+from smart_home_contracts.chicken_thread import DetectionFrame
 
 MAX_DETECTOR_PAYLOAD_BYTES = 200_000
 MAX_DETECTIONS_PER_MESSAGE = 250

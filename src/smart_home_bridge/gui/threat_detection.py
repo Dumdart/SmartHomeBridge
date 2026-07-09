@@ -10,7 +10,7 @@ from smart_home_bridge.bridge_devices.chicken_thread_detector.image_limits impor
     validate_image_size,
 )
 from smart_home_bridge.infrastructure.camera import CameraClientInterface
-from smart_home_bridge.models import BoundingBox, DangerAssessment, DetectionFrame
+from smart_home_contracts.chicken_thread import BoundingBox, DangerAssessment, DetectionFrame
 
 
 @dataclass(frozen=True)

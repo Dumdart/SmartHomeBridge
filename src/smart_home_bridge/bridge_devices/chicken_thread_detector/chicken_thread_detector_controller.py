@@ -6,7 +6,7 @@ from smart_home_bridge.bridge_devices.chicken_thread_detector.chicken_thread_det
 from smart_home_bridge.bridge_devices.chicken_thread_detector.danger_scoring import DangerScorer
 from smart_home_bridge.core import device_controller
 from smart_home_bridge.core.command import Publishable, command, command_result
-from smart_home_bridge.models import DetectionFrame
+from smart_home_contracts.chicken_thread import DetectionFrame
 
 
 class chicken_thread_detector_controller(device_controller):
@@ -70,7 +70,8 @@ class get_detector_state_command(detector_command):
 
 class reset_detector_state_command(detector_command):
     async def excecute(self):
-        from smart_home_bridge.models import DangerAssessment, ThreatLevel
+        from smart_home_contracts.chicken_thread import DangerAssessment, ThreatLevel
+
         state = DangerAssessment(level=ThreatLevel.NONE, score=0.0)
         self.detector.set_device_state(state)
         await self.publish(state.to_json())

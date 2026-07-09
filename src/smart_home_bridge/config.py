@@ -4,15 +4,12 @@ import re
 from collections.abc import Mapping
 from configparser import ConfigParser
 from dataclasses import dataclass, field
-from importlib.resources import files
 from pathlib import Path
 
 from dotenv import load_dotenv
 
-DEFAULT_CHICKEN_THREAT_MODEL_PATH = str(
-    files("smart_home_bridge.models.model").joinpath(
-        "chicken_threat_detector_best_v3.pt"
-    )
+DEFAULT_CHICKEN_THREAT_INFERENCE_URL = (
+    "http://localhost:8090/v1/chicken-threat/infer"
 )
 
 
@@ -52,7 +49,8 @@ class CameraConfig:
 @dataclass(frozen=True)
 class ChickenThreatConfig:
     enabled: bool = False
-    model_path: str = DEFAULT_CHICKEN_THREAT_MODEL_PATH
+    inference_url: str = DEFAULT_CHICKEN_THREAT_INFERENCE_URL
+    inference_timeout_seconds: float = 10.0
     poll_interval_seconds: float = 10.0
 
 
@@ -113,6 +111,10 @@ def load_loxberry_config(
 ) -> app_config:
     loxberry_home = Path(home_dir or _required_env("LBHOMEDIR"))
     loxberry_plugin_config = Path(plugin_config_dir or _required_env("LBPCONFIG"))
+    loxberry_log_dir = Path(os.getenv("LBPLOG", "logs")) / os.getenv(
+        "PLUGIN_FOLDER",
+        "smarthomebridge",
+    )
     mqtt_config_path = loxberry_home / "config" / "system" / "general.json"
     bridge_config_path = (
         loxberry_plugin_config / "smarthomebridge" / "smart-home-bridge.ini"
@@ -120,6 +122,10 @@ def load_loxberry_config(
 
     mqtt_settings = _read_loxberry_mqtt_settings(mqtt_config_path)
     bridge_settings = _read_ini_settings(bridge_config_path)
+    bridge_settings = _resolve_loxberry_log_file_path(
+        bridge_settings,
+        loxberry_log_dir,
+    )
     values = {**bridge_settings, **mqtt_settings}
     return _config_from_mapping(values, require_mqtt_credentials=False)
 
@@ -158,10 +164,15 @@ def _config_from_mapping(
         ),
         chicken_threat=ChickenThreatConfig(
             enabled=_bool(values, "CHICKEN_THREAT_ENABLED", False),
-            model_path=_get(
+            inference_url=_get(
                 values,
-                "CHICKEN_THREAT_MODEL_PATH",
-                DEFAULT_CHICKEN_THREAT_MODEL_PATH,
+                "CHICKEN_THREAT_INFERENCE_URL",
+                DEFAULT_CHICKEN_THREAT_INFERENCE_URL,
+            ),
+            inference_timeout_seconds=_float(
+                values,
+                "CHICKEN_THREAT_INFERENCE_TIMEOUT_SECONDS",
+                10.0,
             ),
             poll_interval_seconds=_float(
                 values,
@@ -346,6 +357,26 @@ def _read_ini_settings(path: Path) -> dict[str, str]:
         for key, value in parser.items(section):
             settings[key.upper()] = value.strip()
     return settings
+
+
+def _resolve_loxberry_log_file_path(
+    settings: Mapping[str, str],
+    log_dir: Path,
+) -> dict[str, str]:
+    resolved = dict(settings)
+    log_file_path = resolved.get("LOG_FILE_PATH", "").strip()
+    if log_file_path == "":
+        return resolved
+
+    path = Path(log_file_path)
+    if path.is_absolute():
+        return resolved
+
+    if log_file_path == "logs/smart-home-bridge.log":
+        resolved["LOG_FILE_PATH"] = str(log_dir / "smart-home-bridge.log")
+    else:
+        resolved["LOG_FILE_PATH"] = str(log_dir / path)
+    return resolved
 
 
 def _read_loxberry_mqtt_settings(path: Path) -> dict[str, str]:

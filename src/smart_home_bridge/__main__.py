@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import os
 import sys
 from collections.abc import Callable
@@ -18,6 +19,8 @@ from smart_home_bridge.config import MqttConfig, app_config, load_config, load_l
 from smart_home_bridge.infrastructure.mqtt.mqtt_client import MqttClient
 from smart_home_bridge.infrastructure.mqtt.mqtt_gate import MqttAdapter
 from smart_home_bridge.runtime_status import build_backend_status
+
+logger = logging.getLogger(__name__)
 
 
 class App:
@@ -44,7 +47,7 @@ class App:
             setattr(self, name, value)
 
     async def start(self):
-        print(f"Starting {self.name} application\n")
+        logger.info("Starting %s application.", self.name)
 
         for runtime in self.device_runtimes:
             await runtime.start()
@@ -54,12 +57,12 @@ class App:
 
     async def stop(self):
         try:
-            print(f"\nStopping {self.name} application.")
+            logger.info("Stopping %s application.", self.name)
             for runtime in reversed(self.device_runtimes):
                 await runtime.stop()
 
         except Exception as e:
-            print(f"Error during shutdown: {e}")
+            logger.exception("Error during shutdown: %s", e)
 
     def _collect_handles(
         self,
@@ -76,13 +79,14 @@ class App:
 
 async def main():
     app_config = load_app_config()
+    configure_logging(app_config)
     application = App(app_config)
 
     try:
         await application.start()
         await application.wait_forever()
     except Exception as e:
-        print(f"Error occurred: {e}")
+        logger.exception("Error occurred: %s", e)
     finally:
         await application.stop()
 
@@ -95,6 +99,23 @@ def load_app_config() -> app_config:
         return load_config()
     raise ValueError(
         "SMART_HOME_BRIDGE_CONFIG_SOURCE must be 'env' or 'loxberry'"
+    )
+
+
+def configure_logging(config: app_config):
+    log_file_path = os.fspath(config.log_file_path)
+    os.makedirs(os.path.dirname(log_file_path) or ".", exist_ok=True)
+    handlers: list[logging.Handler] = [
+        logging.FileHandler(log_file_path, encoding="utf-8")
+    ]
+    if os.getenv("SMART_HOME_BRIDGE_CONFIG_SOURCE", "env").strip().lower() != "loxberry":
+        handlers.append(logging.StreamHandler())
+
+    logging.basicConfig(
+        level=getattr(logging, config.log_level.upper(), logging.INFO),
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        handlers=handlers,
+        force=True,
     )
 
 

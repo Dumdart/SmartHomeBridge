@@ -36,7 +36,10 @@ def build_backend_status(
         },
         "chicken_threat": {
             "enabled": config.chicken_threat.enabled,
-            "model_path": config.chicken_threat.model_path,
+            "inference_url": config.chicken_threat.inference_url,
+            "inference_timeout_seconds": (
+                config.chicken_threat.inference_timeout_seconds
+            ),
             "poll_interval_seconds": config.chicken_threat.poll_interval_seconds,
             "pipeline_running": _pipeline_running(device_runtimes),
         },

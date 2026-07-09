@@ -11,21 +11,26 @@ license = "MIT"
 requires-python = ">=3.11"
 dependencies = [
     "paho-mqtt",
-    "Pillow",
     "python-dotenv",
     "smartcoop-python-sdk",
 ]
 
 [project.optional-dependencies]
 dev = [
+    "httpx",
+    "Pillow",
     "pytest",
+    "starlette",
 ]
 gui = [
+    "Pillow",
     "PySide6",
-    "ultralytics",
 ]
 inference = [
+    "Pillow",
+    "starlette",
     "ultralytics",
+    "uvicorn",
 ]
 
 [project.scripts]
@@ -33,6 +38,7 @@ smart-home-bridge = "smart_home_bridge.__main__:run"
 smart-home-bridge-status = "smart_home_bridge.__main__:status"
 smart-home-bridge-config-check = "smart_home_bridge.__main__:config_check"
 smart-home-bridge-door-command = "smart_home_bridge.__main__:door_command"
+smart-home-inference = "smart_home_inference.__main__:main"
 
 [project.gui-scripts]
 smart-home-bridge-gui = "smart_home_bridge.gui:run"
@@ -41,4 +47,4 @@ smart-home-bridge-gui = "smart_home_bridge.gui:run"
 where = ["src"]
 
 [tool.setuptools.package-data]
-"smart_home_bridge.models.model" = ["chicken_threat_detector_best_v3.pt"]
+"smart_home_inference.models.chicken_thread.model" = ["chicken_threat_detector_best_v4.pt"]

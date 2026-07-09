@@ -6,7 +6,13 @@ $lbplog = getenv('LBPLOG') ?: './logs';
 $bridgeConfig = $lbpconfig . '/' . $pluginFolder . '/smart-home-bridge.ini';
 $bridgeCtl = $lbpbin . '/' . $pluginFolder . '/bridge_ctl.sh';
 $logFile = $lbplog . '/' . $pluginFolder . '/smart-home-bridge.log';
-$allowedCommands = array('start', 'stop', 'restart', 'status', 'dump-config');
+$allowedCommands = array(
+    'start',
+    'stop',
+    'restart',
+    'status',
+    'dump-config',
+);
 $allowedDoorCommands = array(
     'open_door',
     'close_door',
@@ -24,6 +30,8 @@ $editableSettings = array(
     'CAMERA_HOST',
     'CAMERA_PORT',
     'CHICKEN_THREAT_ENABLED',
+    'CHICKEN_THREAT_INFERENCE_URL',
+    'CHICKEN_THREAT_INFERENCE_TIMEOUT_SECONDS',
     'CHICKEN_THREAT_POLL_INTERVAL_SECONDS',
     'LOG_LEVEL',
     'LOG_FILE_PATH',

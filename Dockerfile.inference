@@ -1,0 +1,23 @@
+FROM python:3.12-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    YOLO_CONFIG_DIR=/tmp/Ultralytics
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        libgl1 \
+        libglib2.0-0 \
+        libxcb1 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml README.MD ./
+COPY src ./src
+
+RUN pip install --no-cache-dir ".[inference]"
+
+USER 65532:65532
+
+CMD ["smart-home-inference"]

@@ -1,40 +1,59 @@
-from collections.abc import Callable
-from io import BytesIO
-from typing import Any
+import json
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
-from smart_home_bridge.bridge_devices.chicken_thread_detector.detector import (
-    LocalChickenThreadDetector,
-)
-from smart_home_bridge.bridge_devices.chicken_thread_detector.image_limits import (
-    validate_image_size,
-)
-from smart_home_bridge.models import DetectionFrame
+from smart_home_contracts.chicken_thread import DetectionFrame
 
 
-ImageDecoder = Callable[[bytes], Any]
+class ChickenThreatInferenceError(RuntimeError):
+    pass
 
 
-class ChickenThreatInferenceService:
+class ChickenThreatInferenceClient:
     def __init__(
         self,
-        detector: LocalChickenThreadDetector | None = None,
-        image_decoder: ImageDecoder | None = None,
+        inference_url: str,
+        timeout_seconds: float = 10.0,
     ):
-        self.detector = detector or LocalChickenThreadDetector()
-        self.image_decoder = image_decoder or _decode_jpeg
+        self.inference_url = inference_url
+        self.timeout_seconds = timeout_seconds
 
     def detect(self, image_bytes: bytes, source: str | None = None) -> DetectionFrame:
-        image = self.image_decoder(image_bytes)
-        return self.detector.detect(image, source=source)
+        request = Request(
+            self.inference_url,
+            data=image_bytes,
+            headers={"Content-Type": "image/jpeg"},
+            method="POST",
+        )
+        try:
+            with urlopen(request, timeout=self.timeout_seconds) as response:
+                payload = response.read().decode("utf-8")
+        except HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")
+            raise ChickenThreatInferenceError(
+                f"Inference backend rejected the frame with HTTP {exc.code}: {detail}"
+            ) from exc
+        except URLError as exc:
+            raise ChickenThreatInferenceError(
+                f"Inference backend is unavailable: {exc.reason}"
+            ) from exc
+
+        try:
+            frame = DetectionFrame.from_mapping(json.loads(payload))
+        except (TypeError, ValueError, json.JSONDecodeError) as exc:
+            raise ChickenThreatInferenceError(
+                "Inference backend returned an invalid detection frame."
+            ) from exc
+
+        if frame.source is None and source is not None:
+            return DetectionFrame(detections=frame.detections, source=source)
+        return frame
 
 
-def _decode_jpeg(image_bytes: bytes) -> Any:
-    try:
-        from PIL import Image
-    except ImportError as exc:
-        raise RuntimeError("Install Pillow to decode camera JPEG frames.") from exc
+ChickenThreatInferenceService = ChickenThreatInferenceClient
 
-    image = Image.open(BytesIO(image_bytes))
-    validate_image_size(image)
-    image.load()
-    return image
+__all__ = [
+    "ChickenThreatInferenceClient",
+    "ChickenThreatInferenceError",
+    "ChickenThreatInferenceService",
+]

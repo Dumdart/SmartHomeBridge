@@ -1,5 +1,5 @@
-from smart_home_bridge.config import DEFAULT_CHICKEN_THREAT_MODEL_PATH
-from smart_home_bridge.models import ChickenThreadModelConfig
+from dataclasses import dataclass, field
+
 
 MODEL_CLASS_NAMES = (
     "chicken",
@@ -33,17 +33,38 @@ RISK_BY_LABEL = {
 }
 
 
+@dataclass(frozen=True)
+class ChickenThreadScoringConfig:
+    class_names: tuple[str, ...]
+    risk_by_label: dict[str, float]
+    label_aliases: dict[str, str] = field(default_factory=dict)
+    confidence_threshold: float = 0.35
+    medium_threshold: float = 0.4
+    high_threshold: float = 0.7
+    critical_threshold: float = 0.9
+
+    def normalized_label(self, label: str) -> str:
+        clean_label = label.strip().lower()
+        return self.label_aliases.get(clean_label, clean_label)
+
+
 def default_model_config(
-    model_path: str = DEFAULT_CHICKEN_THREAT_MODEL_PATH,
-) -> ChickenThreadModelConfig:
-    return ChickenThreadModelConfig(
-        model_path=model_path,
+    confidence_threshold: float = 0.35,
+) -> ChickenThreadScoringConfig:
+    return ChickenThreadScoringConfig(
         class_names=MODEL_CLASS_NAMES,
         risk_by_label=RISK_BY_LABEL,
         label_aliases=LABEL_ALIASES,
-        confidence_threshold=0.35,
-        image_size=640,
+        confidence_threshold=confidence_threshold,
         medium_threshold=0.4,
         high_threshold=0.7,
         critical_threshold=0.9,
     )
+
+__all__ = [
+    "LABEL_ALIASES",
+    "MODEL_CLASS_NAMES",
+    "RISK_BY_LABEL",
+    "ChickenThreadScoringConfig",
+    "default_model_config",
+]

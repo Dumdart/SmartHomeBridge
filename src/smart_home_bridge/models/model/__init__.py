@@ -1,1 +1,0 @@
-"""Packaged detector model artifacts."""

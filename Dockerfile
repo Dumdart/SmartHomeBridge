@@ -8,7 +8,7 @@ WORKDIR /app
 COPY pyproject.toml README.MD ./
 COPY src ./src
 
-RUN pip install --no-cache-dir ".[inference]"
+RUN pip install --no-cache-dir "."
 
 USER 65532:65532
 

@@ -4,7 +4,7 @@ from smart_home_bridge.bridge_devices.chicken_thread_detector import (
     ChickenThreatDetectionPipeline,
 )
 from smart_home_bridge.core.command import command_result
-from smart_home_bridge.models import DangerAssessment, DetectionFrame, ThreatLevel
+from smart_home_contracts.chicken_thread import DangerAssessment, DetectionFrame, ThreatLevel
 
 
 class FakeCameraClient:
@@ -126,7 +126,9 @@ def test_pipeline_does_not_score_when_inference_fails():
     assert controller.frames == []
 
 
-def test_pipeline_start_and_stop_manage_background_task(capsys):
+def test_pipeline_start_and_stop_manage_background_task(caplog):
+    caplog.set_level("INFO")
+
     async def exercise_pipeline():
         pipeline = ChickenThreatDetectionPipeline(
             camera_client=FakeCameraClient(),
@@ -141,10 +143,10 @@ def test_pipeline_start_and_stop_manage_background_task(capsys):
         assert pipeline._task is None
 
     asyncio.run(exercise_pipeline())
-    assert "Chicken threat detection camera health check passed." in capsys.readouterr().out
+    assert "Chicken threat detection camera health check passed" in caplog.text
 
 
-def test_pipeline_start_uses_health_check_before_polling(capsys):
+def test_pipeline_start_uses_health_check_before_polling(caplog):
     async def exercise_pipeline():
         camera = FakeCameraClient(error=RuntimeError("camera down"))
         pipeline = ChickenThreatDetectionPipeline(
@@ -163,5 +165,5 @@ def test_pipeline_start_uses_health_check_before_polling(capsys):
     asyncio.run(exercise_pipeline())
     assert (
         "Chicken threat detection pipeline not started: camera health check failed."
-        in capsys.readouterr().out
+        in caplog.text
     )

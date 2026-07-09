@@ -9,12 +9,13 @@ LBPBIN="${LBPBIN:-./bin}"
 LBPCONFIG="${LBPCONFIG:-./config}"
 LBHOMEDIR="${LBHOMEDIR:-./loxberry}"
 LBPDATA="${LBPDATA:-./data}"
+LBPLOG="${LBPLOG:-./logs}"
 BIN_DIR="${LBPBIN}/${PLUGIN_FOLDER}"
 VENV_BIN="${LBPDATA}/${PLUGIN_FOLDER}/venv/bin"
-LOG_DIR="${LBPLOG:-./logs}/${PLUGIN_FOLDER}"
+LOG_DIR="${LBPLOG}/${PLUGIN_FOLDER}"
 PID_FILE="${LOG_DIR}/smart-home-bridge.pid"
 LOG_FILE="${LOG_DIR}/smart-home-bridge.log"
-export LBPBIN LBPCONFIG LBHOMEDIR LBPDATA
+export LBPBIN LBPCONFIG LBHOMEDIR LBPDATA LBPLOG
 PATH="${VENV_BIN}:${BIN_DIR}:${LBPBIN}:$PATH"
 
 start_bridge() {
@@ -41,6 +42,10 @@ stop_bridge() {
     echo "SmartHomeBridge stopped"
 }
 
+service_status() {
+    smart-home-bridge-status
+}
+
 case "$COMMAND" in
     start)
         start_bridge
@@ -53,7 +58,7 @@ case "$COMMAND" in
         start_bridge
         ;;
     status)
-        smart-home-bridge-status
+        service_status
         ;;
     dump-config)
         smart-home-bridge-config-check

@@ -25,7 +25,9 @@ def test_bridge_ctl_uses_fixed_commands_and_loxberry_paths():
     assert 'VENV_BIN="${LBPDATA}/${PLUGIN_FOLDER}/venv/bin"' in script
     assert 'PLUGIN_FOLDER="${PLUGIN_FOLDER:-smarthomebridge}"' in script
     assert 'BIN_DIR="${LBPBIN}/${PLUGIN_FOLDER}"' in script
-    assert 'LOG_DIR="${LBPLOG:-./logs}/${PLUGIN_FOLDER}"' in script
+    assert 'LBPLOG="${LBPLOG:-./logs}"' in script
+    assert 'LOG_DIR="${LBPLOG}/${PLUGIN_FOLDER}"' in script
+    assert "export LBPBIN LBPCONFIG LBHOMEDIR LBPDATA LBPLOG" in script
     assert "SMART_HOME_BRIDGE_CONFIG_SOURCE=loxberry" in script
     for command in (
         "start)",
@@ -36,7 +38,16 @@ def test_bridge_ctl_uses_fixed_commands_and_loxberry_paths():
         "door-command)",
     ):
         assert command in script
+    for command in (
+        "start-bridge)",
+        "stop-bridge)",
+        "start-inference)",
+        "stop-inference)",
+        "install-inference)",
+    ):
+        assert command not in script
     assert "smart-home-bridge-status" in script
+    assert "smart-home-inference" not in script
     assert "smart-home-bridge-config-check" in script
     assert "smart-home-bridge-door-command" in script
 
@@ -59,6 +70,13 @@ def test_loxberry_panel_exposes_settings_manual_commands_and_log_tail():
     assert "DOOR_API_KEY" in panel
     assert "CAMERA_HOST" in panel
     assert "CHICKEN_THREAT_ENABLED" in panel
+    assert "CHICKEN_THREAT_INFERENCE_URL" in panel
+    assert "start-bridge" not in panel
+    assert "stop-bridge" not in panel
+    assert "start-inference" not in panel
+    assert "stop-inference" not in panel
+    assert "install-inference" not in panel
+    assert "Inference Install Info" not in panel
     assert "escapeshellcmd($bridgeCtl) . ' door-command '" in panel
     assert "escapeshellarg($doorCommand)" in panel
 
@@ -92,6 +110,8 @@ def test_loxberry_lifecycle_installs_backend_into_plugin_venv():
     assert 'VENV_DIR="${DATA_DIR}/venv"' in postinstall
     assert 'python3 -m venv "$VENV_DIR"' in postinstall
     assert '"$VENV_BIN/python" -m pip install --upgrade "$PACKAGE_DIR"' in postinstall
+    assert '"$PACKAGE_DIR[inference]"' not in postinstall
+    assert "smart-home-inference" not in postinstall
     assert 'ln -sf "$VENV_BIN/$command" "$BIN_DIR/$command"' in postinstall
 
 
@@ -133,7 +153,7 @@ def test_loxberry_package_has_plugin_files_at_archive_root(tmp_path):
     assert "data/python-package/src/smart_home_bridge/__main__.py" in names
     assert "data/python-package/src/smart_home_bridge/config.py" in names
     assert (
-        "data/python-package/src/smart_home_bridge/models/model/chicken_threat_detector_best_v3.pt"
+        "data/python-package/src/smart_home_inference/models/chicken_thread/model/chicken_threat_detector_best_v4.pt"
         in names
     )
     assert not any(name.startswith("SmartHomeBridge-") for name in names)
