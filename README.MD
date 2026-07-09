@@ -13,7 +13,7 @@ The current bridge supports:
 - Chicken threat assessment from either injected MQTT detection payloads or an
   optional ESP32-CAM polling pipeline
 - Split inference backend with YOLO-based chicken threat detection and the
-  packaged `chicken_threat_detector_best_v3.pt` model
+  packaged `chicken_threat_detector_best_v4.pt` model
 - Optional PySide6 desktop diagnostics and manual controls
 - Docker runtimes for the bridge service and optional inference service
 - LoxBerry plugin packaging, settings, service control, log tail, and manual

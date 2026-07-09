@@ -44,4 +44,4 @@ smart-home-bridge-gui = "smart_home_bridge.gui:run"
 where = ["src"]
 
 [tool.setuptools.package-data]
-"smart_home_inference.models.chicken_thread.model" = ["chicken_threat_detector_best_v3.pt"]
+"smart_home_inference.models.chicken_thread.model" = ["chicken_threat_detector_best_v4.pt"]

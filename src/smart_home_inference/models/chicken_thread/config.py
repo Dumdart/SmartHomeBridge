@@ -4,7 +4,7 @@ from importlib.resources import files
 
 DEFAULT_CHICKEN_THREAT_MODEL_PATH = str(
     files("smart_home_inference.models.chicken_thread.model").joinpath(
-        "chicken_threat_detector_best_v3.pt"
+        "chicken_threat_detector_best_v4.pt"
     )
 )
 
