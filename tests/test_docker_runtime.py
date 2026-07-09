@@ -16,6 +16,10 @@ def test_inference_dockerfile_installs_inference_dependencies_for_default_detect
 
     assert "CHICKEN_THREAT_ENABLED=true" in env_example
     assert "CHICKEN_THREAT_INFERENCE_URL" in env_example
+    assert "libgl1" in dockerfile
+    assert "libglib2.0-0" in dockerfile
+    assert "libxcb1" in dockerfile
+    assert "YOLO_CONFIG_DIR=/tmp/Ultralytics" in dockerfile
     assert ".[inference]" in dockerfile
     assert 'CMD ["smart-home-inference"]' in dockerfile
 

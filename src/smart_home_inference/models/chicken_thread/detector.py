@@ -39,7 +39,9 @@ class LocalChickenThreadDetector:
                 from ultralytics import YOLO
             except ImportError as exc:
                 raise RuntimeError(
-                    "Install ultralytics to run the local chicken thread detector model."
+                    "Unable to import ultralytics for the local chicken thread "
+                    f"detector model: {exc}. Install the inference extra and "
+                    "required native OpenCV libraries."
                 ) from exc
 
             self.model = YOLO(self.config.model_path)

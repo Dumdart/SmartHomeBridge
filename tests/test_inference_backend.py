@@ -1,4 +1,5 @@
 import ast
+import builtins
 import tomllib
 from pathlib import Path
 
@@ -205,6 +206,28 @@ def test_local_detector_maps_fake_model_result_to_detection_frame():
     assert frame.detections[0].label == "wild_mammal_threat"
     assert frame.detections[0].confidence == 0.96
     assert frame.detections[0].box.left == 0.1
+
+
+def test_local_detector_import_error_reports_underlying_native_library(monkeypatch):
+    real_import = builtins.__import__
+
+    def import_with_missing_native_library(name, *args, **kwargs):
+        if name == "ultralytics":
+            raise ImportError("libxcb.so.1: cannot open shared object file")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", import_with_missing_native_library)
+    detector = LocalChickenThreadDetector()
+
+    try:
+        detector._model()
+    except RuntimeError as exc:
+        message = str(exc)
+        assert "Unable to import ultralytics" in message
+        assert "libxcb.so.1" in message
+        assert "native OpenCV libraries" in message
+    else:
+        raise AssertionError("Expected ultralytics import failure")
 
 
 def test_inference_service_decodes_jpeg_bytes_before_detection():
