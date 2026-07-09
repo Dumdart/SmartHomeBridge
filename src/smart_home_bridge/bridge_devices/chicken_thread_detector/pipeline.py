@@ -1,5 +1,6 @@
 import asyncio
 import inspect
+import logging
 from collections.abc import Awaitable, Callable
 
 from smart_home_bridge.bridge_devices.chicken_thread_detector.chicken_thread_detector_controller import (
@@ -16,6 +17,8 @@ CameraInferenceUsageReporter = Callable[
     [str | None, bool, str | None, float | None, int | None],
     Awaitable[None] | None,
 ]
+
+logger = logging.getLogger(__name__)
 
 
 class ChickenThreatDetectionPipeline:
@@ -98,10 +101,16 @@ class ChickenThreatDetectionPipeline:
             return
 
         if not await asyncio.to_thread(self.camera_client.health):
-            print("Chicken threat detection pipeline not started: camera health check failed.")
+            logger.warning(
+                "Chicken threat detection pipeline not started: camera health check failed."
+            )
             return
 
-        print("Chicken threat detection camera health check passed.")
+        logger.info(
+            "Chicken threat detection camera health check passed; polling %s every %s seconds.",
+            getattr(self.inference_service, "inference_url", "inference backend"),
+            self.poll_interval_seconds,
+        )
         self._task = asyncio.create_task(self._poll())
 
     async def stop(self):
@@ -121,6 +130,6 @@ class ChickenThreatDetectionPipeline:
             try:
                 await self.run_once()
             except Exception as exc:
-                print(f"Chicken threat detection poll failed: {exc}")
+                logger.warning("Chicken threat detection poll failed: %s", exc)
 
             await asyncio.sleep(self.poll_interval_seconds)

@@ -25,7 +25,9 @@ def test_bridge_ctl_uses_fixed_commands_and_loxberry_paths():
     assert 'VENV_BIN="${LBPDATA}/${PLUGIN_FOLDER}/venv/bin"' in script
     assert 'PLUGIN_FOLDER="${PLUGIN_FOLDER:-smarthomebridge}"' in script
     assert 'BIN_DIR="${LBPBIN}/${PLUGIN_FOLDER}"' in script
-    assert 'LOG_DIR="${LBPLOG:-./logs}/${PLUGIN_FOLDER}"' in script
+    assert 'LBPLOG="${LBPLOG:-./logs}"' in script
+    assert 'LOG_DIR="${LBPLOG}/${PLUGIN_FOLDER}"' in script
+    assert "export LBPBIN LBPCONFIG LBHOMEDIR LBPDATA LBPLOG" in script
     assert "SMART_HOME_BRIDGE_CONFIG_SOURCE=loxberry" in script
     for command in (
         "start)",
