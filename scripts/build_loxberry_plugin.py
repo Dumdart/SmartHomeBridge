@@ -19,6 +19,10 @@ SHARED_SOURCE_DIR = LOXBERRY_ROOT / "shared"
 PLUGINS_SOURCE_DIR = LOXBERRY_ROOT / "plugins"
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "build" / "loxberry"
 PNG_ICON_SIZES = (64, 128, 256, 512)
+ICON_SURFACE = "#f8f4ec"
+ICON_BORDER = "#dce7df"
+ICON_GREEN = "#195b43"
+ICON_CORAL = "#e36b68"
 PYTHON_PACKAGE_ROOT = "data/python-package"
 PYTHON_PACKAGE_FILES = (
     PROJECT_ROOT / "pyproject.toml",
@@ -135,9 +139,11 @@ def create_png_icon(size: int, icon: str = "omlet-door") -> bytes:
         return round(value * scale)
 
     draw.rounded_rectangle(
-        (0, 0, size - 1, size - 1),
-        radius=point(8),
-        fill="#1f2937",
+        (point(1), point(1), size - point(1), size - point(1)),
+        radius=point(12),
+        fill=ICON_SURFACE,
+        outline=ICON_BORDER,
+        width=max(1, point(2)),
     )
     if icon == "omlet-door":
         _draw_omlet_door_icon(draw, point)
@@ -152,104 +158,122 @@ def create_png_icon(size: int, icon: str = "omlet-door") -> bytes:
 
 
 def _draw_omlet_door_icon(draw: ImageDraw.ImageDraw, point) -> None:
-    draw.polygon(
+    stroke = max(1, point(3))
+    draw.line(
+        [(point(9), point(49)), (point(45), point(49))],
+        fill=ICON_GREEN,
+        width=stroke,
+    )
+    draw.line(
         [
-            (point(8), point(34)),
-            (point(27), point(17)),
-            (point(46), point(34)),
+            (point(14), point(49)),
+            (point(14), point(14)),
+            (point(40), point(14)),
+            (point(40), point(49)),
         ],
-        fill="#f59e0b",
+        fill=ICON_GREEN,
+        width=stroke,
+        joint="curve",
     )
-    draw.rounded_rectangle(
-        (point(12), point(31), point(43), point(54)),
-        radius=point(3),
-        fill="#f8fafc",
-    )
-    draw.rounded_rectangle(
-        (point(21), point(34), point(34), point(54)),
-        radius=point(2),
-        fill="#64748b",
-    )
-    draw.ellipse(
-        (point(36), point(29), point(54), point(47)),
-        fill="#22c55e",
-    )
-    draw.ellipse(
-        (point(45), point(23), point(57), point(35)),
-        fill="#f8fafc",
+    draw.line(
+        [(point(34), point(14)), (point(34), point(49))],
+        fill=ICON_GREEN,
+        width=stroke,
     )
     draw.polygon(
         [
-            (point(56), point(27)),
-            (point(62), point(30)),
-            (point(56), point(32)),
+            (point(55), point(35)),
+            (point(60), point(38)),
+            (point(55), point(40)),
         ],
-        fill="#f59e0b",
+        fill=ICON_CORAL,
     )
     draw.ellipse(
-        (point(51), point(26), point(53), point(28)),
-        fill="#1f2937",
+        (point(47), point(30), point(58), point(41)),
+        fill=ICON_SURFACE,
+        outline=ICON_CORAL,
+        width=stroke,
+    )
+    draw.polygon(
+        [
+            (point(51), point(39)),
+            (point(57), point(43)),
+            (point(53), point(49)),
+            (point(47), point(52)),
+            (point(36), point(52)),
+            (point(45), point(41)),
+        ],
+        fill=ICON_SURFACE,
+        outline=ICON_CORAL,
+        width=stroke,
     )
     draw.line(
-        [(point(42), point(46)), (point(40), point(54))],
-        fill="#f59e0b",
-        width=max(1, point(2)),
+        [
+            (point(46), point(43)),
+            (point(38), point(52)),
+            (point(49), point(52)),
+        ],
+        fill=ICON_CORAL,
+        width=stroke,
+        joint="curve",
     )
-    draw.line(
-        [(point(49), point(46)), (point(50), point(54))],
-        fill="#f59e0b",
-        width=max(1, point(2)),
+    draw.ellipse(
+        (point(52), point(34), point(54), point(36)),
+        fill=ICON_CORAL,
     )
 
 
 def _draw_barn_camera_icon(draw: ImageDraw.ImageDraw, point) -> None:
-    draw.polygon(
+    stroke = max(1, point(3))
+    draw.line(
+        [(point(6), point(22)), (point(38), point(15))],
+        fill=ICON_CORAL,
+        width=stroke,
+    )
+    draw.line(
         [
-            (point(8), point(25)),
-            (point(23), point(13)),
-            (point(38), point(25)),
+            (point(9), point(22)),
+            (point(9), point(38)),
+            (point(38), point(38)),
+            (point(38), point(16)),
         ],
-        fill="#f59e0b",
+        fill=ICON_CORAL,
+        width=stroke,
+        joint="curve",
     )
     draw.rectangle(
-        (point(12), point(24), point(34), point(49)),
-        fill="#f8fafc",
+        (point(14), point(28), point(30), point(38)),
+        outline=ICON_CORAL,
+        width=stroke,
     )
     draw.line(
-        [(point(23), point(27)), (point(23), point(48))],
-        fill="#cbd5e1",
-        width=max(1, point(2)),
+        [(point(14), point(33)), (point(30), point(33))],
+        fill=ICON_CORAL,
+        width=stroke,
     )
-    draw.line(
-        [(point(14), point(37)), (point(32), point(37))],
-        fill="#cbd5e1",
-        width=max(1, point(2)),
+    draw.polygon(
+        [
+            (point(32), point(29)),
+            (point(36), point(24)),
+            (point(46), point(24)),
+            (point(50), point(29)),
+        ],
+        fill=ICON_GREEN,
     )
     draw.rounded_rectangle(
-        (point(27), point(24), point(57), point(46)),
+        (point(27), point(28), point(58), point(53)),
         radius=point(4),
-        fill="#38bdf8",
-    )
-    draw.rounded_rectangle(
-        (point(34), point(19), point(45), point(26)),
-        radius=point(2),
-        fill="#38bdf8",
+        fill=ICON_SURFACE,
+        outline=ICON_GREEN,
+        width=stroke,
     )
     draw.ellipse(
-        (point(35), point(28), point(53), point(46)),
-        fill="#e0f2fe",
+        (point(36), point(35), point(49), point(48)),
+        fill=ICON_GREEN,
     )
     draw.ellipse(
-        (point(39), point(32), point(49), point(42)),
-        fill="#0f172a",
-    )
-    draw.ellipse(
-        (point(42), point(34), point(46), point(38)),
-        fill="#7dd3fc",
-    )
-    draw.ellipse(
-        (point(30), point(28), point(33), point(31)),
-        fill="#f8fafc",
+        (point(40), point(39), point(45), point(44)),
+        fill=ICON_CORAL,
     )
 
 
