@@ -1,7 +1,8 @@
 #!/bin/sh
 set -eu
 
-PLUGIN_FOLDER="smarthomebridge"
+PLUGIN_FOLDER="{{PLUGIN_FOLDER}}"
+PLUGIN_TITLE="{{PLUGIN_TITLE}}"
 CONFIG_DIR="${LBPCONFIG:?}/${PLUGIN_FOLDER}"
 DATA_DIR="${LBPDATA:?}/${PLUGIN_FOLDER}"
 LOG_DIR="${LBPLOG:?}/${PLUGIN_FOLDER}"
@@ -30,5 +31,5 @@ do
     ln -sf "$VENV_BIN/$command" "$BIN_DIR/$command"
 done
 
-echo "<OK> SmartHomeBridge plugin directories prepared"
-echo "<OK> SmartHomeBridge backend installed"
+echo "<OK> $PLUGIN_TITLE plugin directories prepared"
+echo "<OK> SmartHomeBridge shared runtime installed"

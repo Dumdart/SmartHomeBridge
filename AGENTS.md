@@ -1,66 +1,85 @@
 # Agent Instructions
 
 ## General
-- Work in focused, atomic steps. Prefer small, testable changes over large sweeping refactors.
-- Follow existing code patterns and architecture before introducing new abstractions.
-- Always run and fix failing tests before opening a PR.
+
+- Work in focused, atomic steps. Prefer small, testable changes over broad refactors.
+- Follow the existing composition and adapter patterns before introducing new abstractions.
+- Keep domain logic independent from MQTT, HTTP, GUI, camera, vendor, and LoxBerry concerns.
+- Always run the relevant tests after changes and fix failures before opening a PR.
+- Do not commit generated artifacts, runtime logs, local secrets, model data, or temporary scaffolding.
 - Do not leave TODO comments or debug output in committed code.
-- Comment complex code with the format: "// Check ..." or "# Check ..."
+- Explain non-obvious logic with comments beginning `# Check ...` (or `// Check ...` in PHP/C++).
 
---- project-doc ---
+## Project Structure
 
-# Repository Guidelines
+This Python package uses a `src` layout.
 
-## Project Structure & Module Organization
+- `src/smart_home_bridge/`: bridge runtime, CLI, configuration, composition, devices, adapters, services, and optional GUI.
+- `src/smart_home_bridge/core/`: shared device, command, controller, and runtime abstractions.
+- `src/smart_home_bridge/bridge_devices/chicken_door/`: Omlet door model, controller, gateway, MQTT callbacks, and publisher.
+- `src/smart_home_bridge/bridge_devices/chicken_thread_detector/`: detection input, camera polling, inference client, scoring, and MQTT callbacks.
+- `src/smart_home_bridge/infrastructure/`: MQTT, HTTP, camera, and Omlet integrations.
+- `src/smart_home_bridge/services/`: activity logging, environment updates, and MQTT usage reporting.
+- `src/smart_home_inference/`: separate HTTP inference service, model registry, image validation, and YOLO detector.
+- `src/smart_home_contracts/`: shared detection-frame and threat-assessment contracts.
+- `src/firmware/esp32cam_extention/`: ESP32-CAM PlatformIO firmware and examples.
+- `deploy/loxberry/shared/`: shared LoxBerry lifecycle hooks, service control, configuration UI, and MQTT seed files.
+- `deploy/loxberry/plugins/`: per-device LoxBerry manifests, settings, and web UI profiles.
+- `scripts/build_loxberry_plugin.py`: manifest-driven LoxBerry ZIP builder.
+- `tests/`: pytest coverage for runtime, bridge devices, inference, GUI, packaging, and LoxBerry behavior.
 
-This Python package uses a `src` layout. Runtime code lives under `src/smart_home_bridge/`.
+The bridge and inference service are separate processes. The bridge calls the inference HTTP API when camera threat polling is enabled; it does not load YOLO models itself. Threat assessment must not autonomously move the chicken door.
 
-- `src/smart_home_bridge/core/`: device, command, and controller abstractions.
-- `src/smart_home_bridge/bridge_devices/chicken_door/`: chicken door model, controller, messages, and MQTT callbacks.
-- `src/smart_home_bridge/bridge_devices/chicken_thread_detector/`: camera inference pipeline, detector model integration, danger scoring, and MQTT callbacks.
-- `src/smart_home_bridge/infrastructure/api/`: HTTP gateway code for vendor or diagnostic APIs.
-- `src/smart_home_bridge/infrastructure/camera/`: ESP32-CAM HTTP client integration.
-- `src/smart_home_bridge/infrastructure/mqtt/`: MQTT client, gate, and callback wiring.
-- `src/smart_home_bridge/gui/`: optional PySide6 desktop diagnostics and control UI.
-- `src/smart_home_bridge/services/`: shared support services such as activity logging and environment updates.
-- `src/smart_home_bridge/config.py`: environment-backed configuration.
-- `src/firmware/esp32cam_extention/`: ESP32-CAM firmware project and examples.
-- `tests/`: pytest coverage by module or feature.
-- `Dockerfile` and `docker-compose.yml`: containerized local/runtime deployment.
+## Development Commands
 
-Do not commit generated artifacts such as `__pycache__/`, `.pytest_cache/`, build metadata, runtime logs, or local secrets.
+Install the package and the relevant optional dependencies from the repository root:
 
-## Build, Test, and Development Commands
+```bash
+pip install -e ".[dev]"
+pip install -e ".[gui]"       # optional desktop diagnostics
+pip install -e ".[inference]" # optional HTTP inference backend
+```
 
-- `pip install -e ".[dev]"`: install the package in editable mode with pytest.
-- `pip install -e ".[gui]"`: install the optional desktop GUI dependencies.
-- `pip install -e ".[inference]"`: install backend-only inference dependencies.
-- `smart-home-bridge`: run the configured backend entry point.
-- `smart-home-bridge-gui`: run the optional local diagnostics UI.
-- `pytest`: run the full test suite.
-- `docker compose up -d`: start the service using values from `.env`.
-- `docker build -t smart-home-bridge:local .`: build the image directly.
+Useful entry points:
 
-Copy `.env.example` to `.env` before local runtime testing and set the MQTT, HTTP, camera, and detector values for your environment.
+```bash
+smart-home-bridge
+smart-home-inference
+smart-home-bridge-gui
+smart-home-bridge-status
+smart-home-bridge-config-check
+smart-home-bridge-door-command open_door
+```
 
-## Coding Style & Naming Conventions
+Run tests with `pytest`. Build LoxBerry archives with:
 
-Use Python 3.11+ idioms and follow the existing package structure before adding abstractions. Keep domain logic independent from MQTT, HTTP, GUI, camera, and vendor-specific concerns. Use 4-space indentation, `snake_case` for functions and modules, and `PascalCase` for classes.
+```bash
+python scripts/build_loxberry_plugin.py
+python scripts/build_loxberry_plugin.py --plugin omlet-chicken-door
+python scripts/build_loxberry_plugin.py --plugin chicken-barn-camera
+```
 
-Comments should explain non-obvious logic only, using the project convention `# Check ...`. Do not leave TODO comments, debug prints, or temporary scaffolding in committed code.
+Archives are generated below `build/loxberry/`; do not commit them. For Docker, use `docker compose up -d` for the bridge, `docker compose --profile inference up -d` for both services, or `docker compose --profile inference up -d smart-home-inference` for inference only. The GUI is not installed in the runtime images.
 
-## Testing Guidelines
+Copy `.env.example` to `.env` for local runtime testing. Use `SMART_HOME_BRIDGE_CONFIG_SOURCE=loxberry` only for LoxBerry configuration; normal development uses `.env` and environment variables.
 
-Tests use `pytest`. Name test files `test_*.py` and test functions `test_<behavior>()`. Prefer fast unit tests with fakes, as in `tests/test_http_gate.py`. Add or update tests whenever command handling, state mapping, configuration, MQTT callbacks, HTTP behavior, camera handling, detector scoring, or GUI behavior changes.
+## Coding and Testing Conventions
 
-Run `pytest` before opening a pull request and fix failures in the same change.
+- Use Python 3.11+ idioms, 4-space indentation, `snake_case` functions/modules, and `PascalCase` classes.
+- Preserve the existing `BridgeDeviceComposition` / `BridgeDeviceRuntime` lifecycle and dependency injection patterns.
+- Validate commands and external payloads at their boundaries. Retained MQTT commands and stale detector frames must not be replayed as actions.
+- Keep credentials and tokens redacted in status, logs, diagnostics, and LoxBerry output.
+- Add or update fast unit tests whenever command handling, state mapping, configuration, MQTT callbacks, HTTP behavior, camera handling, inference, GUI behavior, packaging, or LoxBerry UI behavior changes.
+- Prefer fakes and focused tests over live MQTT brokers, vendor APIs, cameras, or model downloads.
 
-## Commit & Pull Request Guidelines
+## LoxBerry and Configuration Safety
 
-This checkout does not include enough Git history to infer a repository-specific convention. Use concise, imperative subjects such as `Add HTTP gate error handling` or `Fix chicken door close command`.
+- Treat door movement commands as safety-sensitive: accept only the manifest-enabled commands, publish confirmed state, and preserve manual override behavior.
+- Keep the two LoxBerry plugin profiles isolated: `omlet_chicken_door` enables `chicken_door`; `chicken_barn_camera` enables `chicken_thread_detector` and must reject door commands.
+- The shared LoxBerry control script supports `start`, `stop`, `restart`, `status`, `dump-config`, and validated door commands. Inference is an external service and is not managed by the plugin.
+- Never commit `.env`, API credentials, MQTT passwords, camera tokens, firmware `secrets.h`, private model data, or broker/camera endpoints intended to remain private.
+- Keep MQTT, camera, bridge HTTP, and inference endpoints LAN-only unless explicitly secured.
 
-Pull requests should include a summary, reason for the change, test results, and any configuration or deployment impact. Link related issues when available. For Loxone, MQTT, or diagnostics behavior, include the relevant topic, endpoint, or payload example.
+## Commit and Pull Request Guidance
 
-## Security & Configuration Tips
-
-Never commit real `.env` secrets, `secrets.h`, API credentials, MQTT passwords, broker details, camera addresses, or model/private data. Keep MQTT, HTTP, and camera endpoints LAN-only unless explicitly secured. Treat door movement commands as safety-sensitive: validate commands, publish confirmed state, and preserve manual override behavior.
+Use concise imperative commit subjects, for example `Fix chicken door close command`. PR descriptions should summarize the change, reason, tests run, and any configuration, MQTT topic, endpoint, packaging, or deployment impact.

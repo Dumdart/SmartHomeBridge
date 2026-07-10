@@ -78,8 +78,9 @@ Runtime code follows a `src` layout:
   YOLO-backed chicken threat inference
 - `src/smart_home_contracts/`: shared detection-frame contracts used by bridge
   and inference
-- `deploy/loxberry/smarthomebridge/`: LoxBerry plugin payload
-- `scripts/build_loxberry_plugin.py`: LoxBerry ZIP builder
+- `deploy/loxberry/shared/`: shared LoxBerry lifecycle, control, and web UI
+- `deploy/loxberry/plugins/`: per-device plugin manifests and configuration
+- `scripts/build_loxberry_plugin.py`: manifest-driven LoxBerry ZIP builder
 
 ## Runtime Model
 
@@ -126,7 +127,7 @@ This reads:
 - LoxBerry MQTT broker settings from
   `$LBHOMEDIR/config/system/general.json`
 - Bridge settings from
-  `$LBPCONFIG/smarthomebridge/smart-home-bridge.ini`
+  `$LBPCONFIG/$PLUGIN_FOLDER/smart-home-bridge.ini`
 
 LoxBerry MQTT credentials may be empty. Environment-based runtime configuration
 requires `MQTT_USERNAME` and `MQTT_PASSWORD`.
@@ -532,18 +533,28 @@ Recommended Loxone mapping:
   virtual inputs where useful.
 - Keep broker, bridge, and camera endpoints on the same trusted LAN.
 
-The LoxBerry plugin payload provides:
+The LoxBerry integration is split into two installable plugins:
+
+- `OmletChickenDoorPlugin`, fixed to the `chicken_door` device composition
+- `ChickenBarnCameraPlugin`, fixed to the `chicken_thread_detector` composition
+
+Both archives combine a device profile from `deploy/loxberry/plugins` with the
+shared payload in `deploy/loxberry/shared`. Each payload provides:
 
 - `plugin.cfg` at the archive root
 - lifecycle hooks for install, upgrade, and uninstall
 - `bin/bridge_ctl.sh` for service commands
 - `config/smart-home-bridge.ini` for bridge settings
 - `webfrontend/htmlauth/index.php` for status, start/stop/restart,
-  bridge and inference service controls, configuration editing, log tail, and
-  manual door command publishing
+  configuration editing, and log tail
+- a device-specific `plugin.php` profile; only the door profile exposes manual
+  door command publishing
 - MQTT Gateway seed files for subscriptions, conversions, and reset-after-send
-- Python package payload for bridge runtime and inference source files. Heavy
-  inference dependencies are not installed automatically on LoxBerry.
+- the shared bridge Python package without the local inference backend or model
+
+Each `plugin.json` supplies a stable id, display name, LoxBerry folder, archive
+name, and runtime device keys. This catalog is reusable by a future installer
+that selects plugin ZIPs or builds Docker images.
 
 Build the plugin archive with:
 
@@ -551,17 +562,19 @@ Build the plugin archive with:
 python scripts/build_loxberry_plugin.py
 ```
 
-Upload:
+Build a single selection with:
 
-```text
-build/smarthomebridge-loxberry.zip
+```bash
+python scripts/build_loxberry_plugin.py --plugin omlet-chicken-door
+python scripts/build_loxberry_plugin.py --plugin chicken-barn-camera
 ```
 
-The ZIP must contain `plugin.cfg` directly at the root.
+The output archives are written below `build/loxberry/`. Every ZIP contains
+`plugin.cfg` directly at the root.
 
 ## LoxBerry Bridge Control
 
-`bridge_ctl.sh` supports:
+The shared `bridge_ctl.sh` supports:
 
 ```text
 start
@@ -575,6 +588,9 @@ door-command stop_door
 door-command get_door_state
 ```
 
+Door commands are accepted only when the selected manifest enables
+`chicken_door`; the camera plugin rejects them and hides the control in its UI.
+
 `start`, `stop`, and `restart` control the bridge runtime installed by the
 LoxBerry plugin. Inference is treated as an external service and is not started
 or stopped by the plugin.
@@ -582,8 +598,8 @@ or stopped by the plugin.
 The script exports `SMART_HOME_BRIDGE_CONFIG_SOURCE=loxberry`, resolves
 standard LoxBerry directories from `LBPBIN`, `LBPCONFIG`, `LBHOMEDIR`,
 `LBPDATA`, and `LBPLOG`, and writes process output to the plugin log directory.
-The plugin installs the bridge virtual environment at
-`$LBPDATA/smarthomebridge/venv`. Run the inference service with Docker or on a
+Each plugin installs an isolated bridge virtual environment at
+`$LBPDATA/$PLUGIN_FOLDER/venv`. Run the inference service with Docker or on a
 larger host when local model serving is required.
 
 ## Docker Runtime

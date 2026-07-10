@@ -237,6 +237,34 @@ def test_load_config_requires_door_device_id(tmp_path, monkeypatch):
         raise AssertionError("Expected missing DOOR_DEVICE_ID to be rejected")
 
 
+def test_load_config_does_not_require_door_credentials_for_camera_only(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.delenv("DOOR_API_KEY", raising=False)
+    monkeypatch.delenv("DOOR_DEVICE_ID", raising=False)
+    env_path = tmp_path / ".env"
+    env_path.write_text(
+        "\n".join(
+            [
+                "MQTT_HOST=mqtt.local",
+                "MQTT_PORT=1883",
+                "MQTT_USERNAME=user",
+                "MQTT_PASSWORD=password",
+                "MQTT_BASE_TOPIC=loxone",
+                "BRIDGE_DEVICES_ENABLED=chicken_thread_detector",
+            ]
+        )
+        + "\n"
+    )
+
+    config = load_config(str(env_path), override=True)
+
+    assert config.door_api.api_key == ""
+    assert config.door_api.device_id == ""
+    assert config.devices.enabled == ("chicken_thread_detector",)
+
+
 def test_load_loxberry_config_reads_mqtt_json_and_plugin_ini(tmp_path):
     home_dir = tmp_path / "loxberry"
     plugin_config_dir = tmp_path / "config"
@@ -370,3 +398,38 @@ def test_load_loxberry_config_accepts_gateway_mqtt_fields_without_credentials(tm
     assert config.mqtt.port == 1883
     assert config.mqtt.username == ""
     assert config.mqtt.password == ""
+
+
+def test_load_loxberry_config_uses_selected_plugin_folder(tmp_path, monkeypatch):
+    home_dir = tmp_path / "loxberry"
+    plugin_config_dir = tmp_path / "config"
+    log_dir = tmp_path / "logs"
+    mqtt_dir = home_dir / "config" / "system"
+    bridge_dir = plugin_config_dir / "chickenbarncamera"
+    mqtt_dir.mkdir(parents=True)
+    bridge_dir.mkdir(parents=True)
+    monkeypatch.setenv("PLUGIN_FOLDER", "chickenbarncamera")
+    monkeypatch.setenv("LBPLOG", str(log_dir))
+    (mqtt_dir / "general.json").write_text(
+        json.dumps({"mqtt": {"host": "loxberry-mqtt.local", "port": 1883}})
+    )
+    (bridge_dir / "smart-home-bridge.ini").write_text(
+        "\n".join(
+            [
+                "[smart-home-bridge]",
+                "MQTT_BASE_TOPIC=smart-home-bridge",
+                "BRIDGE_DEVICES_ENABLED=chicken_thread_detector",
+                "CAMERA_HOST=esp32cam.local",
+                "LOG_FILE_PATH=logs/smart-home-bridge.log",
+            ]
+        )
+        + "\n"
+    )
+
+    config = load_loxberry_config(home_dir, plugin_config_dir)
+
+    assert config.devices.enabled == ("chicken_thread_detector",)
+    assert config.camera.host == "esp32cam.local"
+    assert config.log_file_path == str(
+        log_dir / "chickenbarncamera" / "smart-home-bridge.log"
+    )

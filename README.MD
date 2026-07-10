@@ -16,8 +16,8 @@ The current bridge supports:
   packaged `chicken_threat_detector_best_v4.pt` model
 - Optional PySide6 desktop diagnostics and manual controls
 - Docker runtimes for the bridge service and optional inference service
-- LoxBerry plugin packaging, settings, service control, log tail, and manual
-  door command publishing
+- Modular LoxBerry plugin packaging, settings, service control, log tail, and
+  device-specific controls
 
 For deeper architecture, MQTT, Loxone, and configuration details, see
 [TECHNICAL.MD](TECHNICAL.MD).
@@ -135,27 +135,47 @@ The bridge image installs only bridge runtime dependencies and runs
 `smart-home-inference`. Neither image installs the optional PySide6 GUI
 dependencies.
 
-## LoxBerry Plugin
+## Modular LoxBerry Plugins
 
-Build the LoxBerry plugin ZIP from the plugin payload directory:
+List the available device plugins:
+
+```bash
+python scripts/build_loxberry_plugin.py --list
+```
+
+Build both plugins, or select one by its stable manifest id:
 
 ```bash
 python scripts/build_loxberry_plugin.py
+python scripts/build_loxberry_plugin.py --plugin omlet-chicken-door
+python scripts/build_loxberry_plugin.py --plugin chicken-barn-camera
 ```
 
-Upload `build/smarthomebridge-loxberry.zip` to LoxBerry. Do not upload a GitHub
-source archive or a ZIP of the repository root; LoxBerry expects `plugin.cfg`
-directly at the archive root.
+The builds are written to `build/loxberry/omlet-chicken-door-loxberry.zip` and
+`build/loxberry/chicken-barn-camera-loxberry.zip`. Upload only the plugin needed
+for that device, or install both independently. Do not upload a GitHub source
+archive or a ZIP of the repository root; LoxBerry expects `plugin.cfg` directly
+at the archive root.
+
+`OmletChickenDoorPlugin` contains door credentials, door topics, retained door
+state subscriptions, and manual door commands. `ChickenBarnCameraPlugin`
+contains camera, detector, and external inference settings without requiring
+Omlet credentials.
 
 When `SMART_HOME_BRIDGE_CONFIG_SOURCE=loxberry`, the bridge reads MQTT broker
 settings from LoxBerry's system MQTT configuration and bridge-specific settings
 from `smart-home-bridge.ini`.
 
-The plugin installs only the bridge runtime during LoxBerry installation.
+Each plugin installs the same shared bridge runtime during LoxBerry installation
+and fixes `BRIDGE_DEVICES_ENABLED` to its own domain. Shared payload files live
+under `deploy/loxberry/shared`; device profiles and machine-readable manifests
+live under `deploy/loxberry/plugins`. The manifest catalog is intended to be the
+input for a later interactive ZIP or Docker-image installer.
+
 Inference dependencies such as Torch and Ultralytics can require multiple GB of
 disk space, so run inference with Docker or install `.[inference]` manually on a
-larger host. The LoxBerry web UI exposes only the bridge lifecycle, config
-checks, log tailing, settings, and manual door commands.
+larger host. The LoxBerry web UI exposes the bridge lifecycle, config checks,
+log tailing, and settings; manual door commands appear only in the door plugin.
 
 ## GUI
 

@@ -2,9 +2,12 @@
 set -eu
 
 COMMAND="${1:-status}"
+PLUGIN_FOLDER="${PLUGIN_FOLDER:-{{PLUGIN_FOLDER}}}"
+PLUGIN_TITLE="{{PLUGIN_TITLE}}"
+ENABLED_DEVICES="{{DEVICE_KEYS}}"
+export PLUGIN_FOLDER
 export SMART_HOME_BRIDGE_CONFIG_SOURCE=loxberry
 
-PLUGIN_FOLDER="${PLUGIN_FOLDER:-smarthomebridge}"
 LBPBIN="${LBPBIN:-./bin}"
 LBPCONFIG="${LBPCONFIG:-./config}"
 LBHOMEDIR="${LBHOMEDIR:-./loxberry}"
@@ -21,17 +24,17 @@ PATH="${VENV_BIN}:${BIN_DIR}:${LBPBIN}:$PATH"
 start_bridge() {
     mkdir -p "$LOG_DIR"
     if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
-        echo "SmartHomeBridge already running"
+        echo "$PLUGIN_TITLE already running"
         return 0
     fi
     nohup smart-home-bridge >> "$LOG_FILE" 2>&1 &
     echo "$!" > "$PID_FILE"
-    echo "SmartHomeBridge started"
+    echo "$PLUGIN_TITLE started"
 }
 
 stop_bridge() {
     if [ ! -f "$PID_FILE" ]; then
-        echo "SmartHomeBridge is not running"
+        echo "$PLUGIN_TITLE is not running"
         return 0
     fi
     PID="$(cat "$PID_FILE")"
@@ -39,7 +42,7 @@ stop_bridge() {
         kill "$PID"
     fi
     rm -f "$PID_FILE"
-    echo "SmartHomeBridge stopped"
+    echo "$PLUGIN_TITLE stopped"
 }
 
 service_status() {
@@ -65,6 +68,13 @@ case "$COMMAND" in
         smart-home-bridge-status
         ;;
     door-command)
+        case ",$ENABLED_DEVICES," in
+            *,chicken_door,*) ;;
+            *)
+                echo "Door commands are not supported by $PLUGIN_TITLE" >&2
+                exit 2
+                ;;
+        esac
         DOOR_COMMAND="${2:-}"
         case "$DOOR_COMMAND" in
             open_door|close_door|stop_door|get_door_state)

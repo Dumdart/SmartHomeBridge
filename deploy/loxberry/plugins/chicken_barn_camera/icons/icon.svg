@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Chicken barn camera">
+  <title>Chicken barn camera</title>
+  <metadata>Icon geometry adapted from Phosphor Icons, MIT License, Copyright (c) 2023 Phosphor Icons.</metadata>
+  <rect x="1" y="1" width="62" height="62" rx="12" fill="#f8f4ec" stroke="#dce7df" stroke-width="2"/>
+  <g aria-hidden="true">
+    <g transform="translate(4 9) scale(.14)" fill="#e36b68">
+      <path d="M240 184h-8V57.9l9.67-2.08a8 8 0 1 0-3.35-15.64l-224 48A8 8 0 0 0 16 104a8.16 8.16 0 0 0 1.69-.18L24 102.47V184h-8a8 8 0 0 0 0 16h224a8 8 0 0 0 0-16ZM40 99l176-37.67V184h-24v-56a8 8 0 0 0-8-8H72a8 8 0 0 0-8 8v56H40Zm136 53H80v-16h96Zm-96 16h96v16H80Z"/>
+    </g>
+    <circle cx="42.2" cy="40.8" r="4.2" fill="#e36b68"/>
+    <g transform="translate(23 21) scale(.15)" fill="#195b43">
+      <path d="M208 56h-27.72l-13.63-20.44A8 8 0 0 0 160 32H96a8 8 0 0 0-6.65 3.56L75.71 56H48a24 24 0 0 0-24 24v112a24 24 0 0 0 24 24h160a24 24 0 0 0 24-24V80a24 24 0 0 0-24-24Zm8 136a8 8 0 0 1-8 8H48a8 8 0 0 1-8-8V80a8 8 0 0 1 8-8h32a8 8 0 0 0 6.66-3.56L100.28 48h55.43l13.63 20.44A8 8 0 0 0 176 72h32a8 8 0 0 1 8 8Zm-88-104a44 44 0 1 0 44 44 44.05 44.05 0 0 0-44-44Zm0 72a28 28 0 1 1 28-28 28 28 0 0 1-28 28Z"/>
+    </g>
+  </g>
+</svg>

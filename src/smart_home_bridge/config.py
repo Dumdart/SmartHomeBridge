@@ -111,13 +111,11 @@ def load_loxberry_config(
 ) -> app_config:
     loxberry_home = Path(home_dir or _required_env("LBHOMEDIR"))
     loxberry_plugin_config = Path(plugin_config_dir or _required_env("LBPCONFIG"))
-    loxberry_log_dir = Path(os.getenv("LBPLOG", "logs")) / os.getenv(
-        "PLUGIN_FOLDER",
-        "smarthomebridge",
-    )
+    plugin_folder = os.getenv("PLUGIN_FOLDER", "smarthomebridge")
+    loxberry_log_dir = Path(os.getenv("LBPLOG", "logs")) / plugin_folder
     mqtt_config_path = loxberry_home / "config" / "system" / "general.json"
     bridge_config_path = (
-        loxberry_plugin_config / "smarthomebridge" / "smart-home-bridge.ini"
+        loxberry_plugin_config / plugin_folder / "smart-home-bridge.ini"
     )
 
     mqtt_settings = _read_loxberry_mqtt_settings(mqtt_config_path)
@@ -134,10 +132,20 @@ def _config_from_mapping(
     values: Mapping[str, str],
     require_mqtt_credentials: bool = True,
 ) -> app_config:
+    devices = _bridge_devices_config(values)
+    door_enabled = devices.is_enabled("chicken_door")
     return app_config(
         door_api=DoorApiConfig(
-            api_key=_required(values, "DOOR_API_KEY"),
-            device_id=_required(values, "DOOR_DEVICE_ID"),
+            api_key=(
+                _required(values, "DOOR_API_KEY")
+                if door_enabled
+                else _get(values, "DOOR_API_KEY", "")
+            ),
+            device_id=(
+                _required(values, "DOOR_DEVICE_ID")
+                if door_enabled
+                else _get(values, "DOOR_DEVICE_ID", "")
+            ),
         ),
         mqtt=MqttConfig(
             host=_required(values, "MQTT_HOST"),
@@ -180,7 +188,7 @@ def _config_from_mapping(
                 10.0,
             ),
         ),
-        devices=_bridge_devices_config(values),
+        devices=devices,
     )
 
 
