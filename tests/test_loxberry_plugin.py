@@ -181,8 +181,39 @@ def test_shared_web_panel_preserves_fixed_device_profile():
     assert "door-command" in panel
     assert "log-tail" in panel
     assert "array_merge($fixedSettings, $settings)" in panel
-    assert "escapeshellarg($doorCommand)" in panel
+    assert "escapeshellarg($argument)" in panel
     assert "count($allowedDoorCommands) > 0" in panel
+
+
+def test_shared_web_panel_uses_native_loxberry_ui_and_safe_form_flow():
+    panel = Path("deploy/loxberry/shared/webfrontend/htmlauth/index.php").read_text()
+
+    assert "require_once 'loxberry_web.php'" in panel
+    assert "LBWeb::lbheader" in panel
+    assert "LBWeb::lbfooter" in panel
+    assert "header('Location: '" in panel
+    assert "hash_equals($csrfToken" in panel
+    assert "Leave blank to keep the existing value" in panel
+    assert "redact_output" in panel
+    assert "confirm('Close the chicken door now?" in panel
+
+
+def test_plugin_profiles_define_human_friendly_field_schemas():
+    camera = Path(
+        "deploy/loxberry/plugins/chicken_barn_camera/webfrontend/htmlauth/plugin.php"
+    ).read_text()
+    door = Path(
+        "deploy/loxberry/plugins/omlet_chicken_door/webfrontend/htmlauth/plugin.php"
+    ).read_text()
+
+    assert "$fieldSchema = array(" in camera
+    assert "'label' => 'Camera address'" in camera
+    assert "'sensitive' => true" in camera
+    assert "'test-camera' => 'Test camera'" in camera
+    assert "$fieldSchema = array(" in door
+    assert "'label' => 'Omlet API key'" in door
+    assert "'test-door' => 'Test API & device'" in door
+    assert "array('open_door', 'close_door', 'stop_door', 'get_door_state')" in door
 
 
 def test_archives_mark_lifecycle_and_control_scripts_executable(tmp_path):
