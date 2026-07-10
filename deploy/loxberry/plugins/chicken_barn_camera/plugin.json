@@ -1,0 +1,9 @@
+{
+  "id": "chicken-barn-camera",
+  "name": "ChickenBarnCameraPlugin",
+  "folder": "chickenbarncamera",
+  "title": "ChickenBarnCameraPlugin",
+  "device_keys": ["chicken_thread_detector"],
+  "icon": "barn-camera",
+  "archive_name": "chicken-barn-camera-loxberry.zip"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "omlet-chicken-door",
+  "name": "OmletChickenDoorPlugin",
+  "folder": "omletchickendoor",
+  "title": "OmletChickenDoorPlugin",
+  "device_keys": ["chicken_door"],
+  "icon": "omlet-door",
+  "archive_name": "omlet-chicken-door-loxberry.zip"
+}

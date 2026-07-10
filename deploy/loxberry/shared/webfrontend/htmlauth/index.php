@@ -1,41 +1,13 @@
 <?php
-$pluginFolder = 'smarthomebridge';
+require __DIR__ . '/plugin.php';
+
 $lbpbin = getenv('LBPBIN') ?: './bin';
 $lbpconfig = getenv('LBPCONFIG') ?: './config';
 $lbplog = getenv('LBPLOG') ?: './logs';
 $bridgeConfig = $lbpconfig . '/' . $pluginFolder . '/smart-home-bridge.ini';
 $bridgeCtl = $lbpbin . '/' . $pluginFolder . '/bridge_ctl.sh';
 $logFile = $lbplog . '/' . $pluginFolder . '/smart-home-bridge.log';
-$allowedCommands = array(
-    'start',
-    'stop',
-    'restart',
-    'status',
-    'dump-config',
-);
-$allowedDoorCommands = array(
-    'open_door',
-    'close_door',
-    'stop_door',
-    'get_door_state',
-);
-$editableSettings = array(
-    'DOOR_API_KEY',
-    'DOOR_DEVICE_ID',
-    'MQTT_BASE_TOPIC',
-    'BRIDGE_DEVICES_ENABLED',
-    'CHICKEN_DOOR_COMMAND_TOPIC',
-    'CHICKEN_DOOR_STATUS_TOPIC',
-    'CHICKEN_THREAD_DETECTOR_TOPIC',
-    'CAMERA_HOST',
-    'CAMERA_PORT',
-    'CHICKEN_THREAT_ENABLED',
-    'CHICKEN_THREAT_INFERENCE_URL',
-    'CHICKEN_THREAT_INFERENCE_TIMEOUT_SECONDS',
-    'CHICKEN_THREAT_POLL_INTERVAL_SECONDS',
-    'LOG_LEVEL',
-    'LOG_FILE_PATH',
-);
+$allowedCommands = array('start', 'stop', 'restart', 'status', 'dump-config');
 $output = array();
 $exitCode = 0;
 $notice = '';
@@ -43,7 +15,7 @@ $notice = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? 'status';
     if ($action === 'save-settings') {
-        save_settings($bridgeConfig, $editableSettings);
+        save_settings($bridgeConfig, $editableSettings, $fixedSettings);
         $notice = 'Settings saved. Restart the backend for runtime settings to apply.';
         $action = 'status';
     }
@@ -55,8 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit('Invalid door command');
         }
         exec(
-            escapeshellcmd($bridgeCtl) . ' door-command '
-                . escapeshellarg($doorCommand),
+            escapeshellcmd($bridgeCtl) . ' door-command ' . escapeshellarg($doorCommand),
             $output,
             $exitCode
         );
@@ -90,7 +61,7 @@ function load_settings($path, $keys) {
     return $settings;
 }
 
-function save_settings($path, $keys) {
+function save_settings($path, $keys, $fixedSettings) {
     $settings = load_settings($path, $keys);
     foreach ($keys as $key) {
         if (array_key_exists($key, $_POST)) {
@@ -104,8 +75,8 @@ function save_settings($path, $keys) {
     }
 
     $lines = array('[smart-home-bridge]');
-    foreach ($keys as $key) {
-        $lines[] = $key . '=' . ini_value($settings[$key]);
+    foreach (array_merge($fixedSettings, $settings) as $key => $value) {
+        $lines[] = $key . '=' . ini_value($value);
     }
     file_put_contents($path, implode("\n", $lines) . "\n");
 }
@@ -136,10 +107,10 @@ function e($value) {
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>SmartHomeBridge</title>
+    <title><?php echo e($pluginTitle); ?></title>
 </head>
 <body>
-    <h1>SmartHomeBridge</h1>
+    <h1><?php echo e($pluginTitle); ?></h1>
     <?php if ($notice !== ''): ?>
         <p><?php echo e($notice); ?></p>
     <?php endif; ?>
@@ -153,17 +124,19 @@ function e($value) {
         <button name="action" value="log-tail">Log Tail</button>
     </form>
 
-    <h2>Manual Door Commands</h2>
-    <form method="post">
-        <select name="door_command">
-            <?php foreach ($allowedDoorCommands as $doorCommand): ?>
-                <option value="<?php echo e($doorCommand); ?>"><?php echo e($doorCommand); ?></option>
-            <?php endforeach; ?>
-        </select>
-        <button name="action" value="door-command">Publish</button>
-    </form>
+    <?php if (count($allowedDoorCommands) > 0): ?>
+        <h2>Manual Door Commands</h2>
+        <form method="post">
+            <select name="door_command">
+                <?php foreach ($allowedDoorCommands as $doorCommand): ?>
+                    <option value="<?php echo e($doorCommand); ?>"><?php echo e($doorCommand); ?></option>
+                <?php endforeach; ?>
+            </select>
+            <button name="action" value="door-command">Publish</button>
+        </form>
+    <?php endif; ?>
 
-    <h2>Critical Settings</h2>
+    <h2>Settings</h2>
     <form method="post">
         <?php foreach ($editableSettings as $key): ?>
             <label>

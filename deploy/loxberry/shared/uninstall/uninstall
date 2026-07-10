@@ -1,12 +1,12 @@
 #!/bin/sh
 set -eu
 
-PLUGIN_FOLDER="smarthomebridge"
+PLUGIN_FOLDER="{{PLUGIN_FOLDER}}"
 BRIDGE_CTL="${LBPBIN:?}/${PLUGIN_FOLDER}/bridge_ctl.sh"
 
 if [ -x "$BRIDGE_CTL" ]; then
     "$BRIDGE_CTL" stop || true
-    echo "<OK> SmartHomeBridge backend stopped"
+    echo "<OK> {{PLUGIN_TITLE}} backend stopped"
 else
-    echo "<INFO> SmartHomeBridge control script not found"
+    echo "<INFO> {{PLUGIN_TITLE}} control script not found"
 fi
