@@ -7,6 +7,7 @@ import yaml
 from PIL import Image
 
 from smart_home_ml.chicken_threat.artifacts import compare_candidate
+from smart_home_ml.chicken_threat import cli
 from smart_home_ml.chicken_threat.dataset import (
     DatasetValidationError,
     build_dataset,
@@ -51,6 +52,39 @@ def test_dataset_validation_rejects_capture_group_leakage(tmp_path):
             "v5.0.0",
             dataset_config_path=Path("ml/chicken_threat/configs/dataset.yaml"),
         )
+
+
+def test_local_dataset_command_uses_the_ignored_workspace(monkeypatch, tmp_path, capsys):
+    workspace = tmp_path / "work"
+    built_dataset = workspace / "datasets" / "v5.0.0"
+    captured = {}
+
+    def fake_build_dataset(metadata, output_dir, class_mapping, version, sample_limit, dataset_config):
+        captured.update(
+            metadata=metadata,
+            output_dir=output_dir,
+            class_mapping=class_mapping,
+            version=version,
+            sample_limit=sample_limit,
+            dataset_config=dataset_config,
+        )
+        return built_dataset
+
+    monkeypatch.setattr(cli, "build_dataset", fake_build_dataset)
+    monkeypatch.setattr(
+        "sys.argv",
+        ["smart-home-ml-prepare-local-dataset", "--workspace", str(workspace)],
+    )
+
+    cli.prepare_local_dataset_main()
+
+    assert captured["metadata"] == workspace.resolve() / "source_metadata.csv"
+    assert captured["output_dir"] == workspace.resolve() / "datasets"
+    assert captured["version"] == "v5.0.0"
+    assert captured["sample_limit"] == 24
+    assert captured["class_mapping"].name == "class_mapping.yaml"
+    assert captured["dataset_config"].name == "dataset.yaml"
+    assert capsys.readouterr().out.strip() == str(built_dataset)
 
 
 def test_dataset_validation_rejects_malformed_yolo_label(tmp_path):

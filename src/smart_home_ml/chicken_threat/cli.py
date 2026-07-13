@@ -34,6 +34,33 @@ def inspect_dataset_main() -> None:
     print(json.dumps(inspect_dataset(args.dataset, args.output_dir).to_dict(), indent=2))
 
 
+def prepare_local_dataset_main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Build the chicken-threat dataset in the local ignored ML workspace"
+    )
+    parser.add_argument(
+        "--workspace",
+        type=Path,
+        default=Path("ml/chicken_threat/work"),
+        help="Ignored workspace containing source_metadata.csv (default: %(default)s)",
+    )
+    parser.add_argument("--version", default="v5.0.0")
+    parser.add_argument("--sample-limit", type=int, default=24)
+    args = parser.parse_args()
+
+    workspace = args.workspace.resolve()
+    repository_root = Path(__file__).resolve().parents[3]
+    dataset_root = build_dataset(
+        workspace / "source_metadata.csv",
+        workspace / "datasets",
+        repository_root / "ml/chicken_threat/configs/class_mapping.yaml",
+        args.version,
+        args.sample_limit,
+        repository_root / "ml/chicken_threat/configs/dataset.yaml",
+    )
+    print(dataset_root)
+
+
 def train_main() -> None:
     parser = argparse.ArgumentParser(description="Train a chicken-threat candidate model")
     parser.add_argument("--dataset-yaml", type=Path, required=True)

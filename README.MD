@@ -57,11 +57,12 @@ The inference backend requires the `inference` extra.
 
 ## Chicken-Threat ML Workflow
 
-The training lifecycle is deliberately separate from deployment. Colab prepares
-and inspects a source-metadata-driven dataset, Kaggle trains a candidate, and a
-human promotes a candidate only after the fixed v4 test and barn holdout gates
-pass. The release contains only the approved production model in the inference
-package/image; LoxBerry continues to use the external inference service.
+The training lifecycle is deliberately separate from deployment. A local,
+gitignored ML workspace prepares and inspects a source-metadata-driven dataset,
+Kaggle trains a candidate, and a human promotes a candidate only after the
+fixed v4 test and barn holdout gates pass. The release contains only the
+approved production model in the inference package/image; LoxBerry continues to
+use the external inference service.
 
 Install the locked environment with `uv sync --extra ml --locked`, then see
 [the ML workflow guide](ml/chicken_threat/README.md). Candidate weights,
