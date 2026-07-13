@@ -1,12 +1,8 @@
 from dataclasses import dataclass, field
-from importlib.resources import files
+from smart_home_inference.models.chicken_thread.model_manifest import default_model_path
 
 
-DEFAULT_CHICKEN_THREAT_MODEL_PATH = str(
-    files("smart_home_inference.models.chicken_thread.model").joinpath(
-        "chicken_threat_detector_best_v4.pt"
-    )
-)
+DEFAULT_CHICKEN_THREAT_MODEL_PATH = default_model_path()
 
 MODEL_CLASS_NAMES = (
     "chicken",

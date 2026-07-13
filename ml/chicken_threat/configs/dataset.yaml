@@ -1,0 +1,21 @@
+version: v5.0.0
+class_names:
+  - chicken
+  - other_poultry
+  - rodent
+  - fox
+  - cat
+  - dog
+  - bird_of_prey
+  - other_bird
+  - person
+required_evaluations:
+  - v4_test
+  - barn_holdout
+metadata_columns:
+  - image_path
+  - label_path
+  - source
+  - capture_group
+  - lighting
+  - split

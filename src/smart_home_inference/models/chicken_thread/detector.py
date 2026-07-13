@@ -2,9 +2,11 @@ from typing import Any
 
 from smart_home_contracts.chicken_thread import BoundingBox, Detection, DetectionFrame
 from smart_home_inference.models.chicken_thread.config import (
+    DEFAULT_CHICKEN_THREAT_MODEL_PATH,
     ChickenThreadModelConfig,
     default_model_config,
 )
+from smart_home_inference.models.chicken_thread.model_manifest import verify_production_model
 
 
 class LocalChickenThreadDetector:
@@ -35,6 +37,8 @@ class LocalChickenThreadDetector:
 
     def _model(self):
         if self.model is None:
+            if self.config.model_path == DEFAULT_CHICKEN_THREAT_MODEL_PATH:
+                verify_production_model(self.config.model_path)
             try:
                 from ultralytics import YOLO
             except ImportError as exc:
