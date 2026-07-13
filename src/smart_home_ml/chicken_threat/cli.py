@@ -12,6 +12,7 @@ from smart_home_ml.chicken_threat.artifacts import (
     train_model,
 )
 from smart_home_ml.chicken_threat.dataset import build_dataset, inspect_dataset
+from smart_home_ml.chicken_threat.downloads import download_datasets
 
 
 def build_dataset_main() -> None:
@@ -59,6 +60,56 @@ def prepare_local_dataset_main() -> None:
         repository_root / "ml/chicken_threat/configs/dataset.yaml",
     )
     print(dataset_root)
+
+
+def download_datasets_main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Download chicken-threat source datasets into the local ignored ML workspace"
+    )
+    parser.add_argument(
+        "--workspace",
+        type=Path,
+        default=Path("ml/chicken_threat/work"),
+        help="Ignored workspace for raw sources and generated source metadata (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--config",
+        type=Path,
+        help="Source configuration YAML (default: ml/chicken_threat/configs/download_sources.yaml)",
+    )
+    parser.add_argument(
+        "--source",
+        action="append",
+        default=[],
+        help="Source name to download; repeat to select multiple sources",
+    )
+    parser.add_argument(
+        "--refresh",
+        action="append",
+        default=[],
+        help="Selected source to acquire again instead of resuming cached output",
+    )
+    parser.add_argument(
+        "--refresh-all",
+        action="store_true",
+        help="Acquire all selected sources again instead of resuming cached output",
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Print full tracebacks for source failures as they occur",
+    )
+    args = parser.parse_args()
+    print(
+        download_datasets(
+            workspace=args.workspace,
+            config_path=args.config,
+            source_names=args.source,
+            refresh_sources=args.refresh,
+            refresh_all=args.refresh_all,
+            verbose=args.verbose,
+        )
+    )
 
 
 def train_main() -> None:
