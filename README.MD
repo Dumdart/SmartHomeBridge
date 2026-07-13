@@ -19,6 +19,13 @@ The current bridge supports:
 - Modular LoxBerry plugin packaging, settings, service control, log tail, and
   device-specific controls
 
+
+Supported LoxBerry Plugins:
+
+- OmletChickenDoorPlugin
+- ChickenBarnCameraPlugin
+
+
 For deeper architecture, MQTT, Loxone, and configuration details, see
 [TECHNICAL.MD](TECHNICAL.MD).
 
