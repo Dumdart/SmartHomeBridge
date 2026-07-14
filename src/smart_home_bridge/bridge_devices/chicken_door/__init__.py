@@ -25,6 +25,9 @@ from smart_home_bridge.bridge_devices.chicken_door.door_controller import (
     open_door_command,
     stop_door_command,
 )
+from smart_home_bridge.bridge_devices.chicken_door.door_state_polling import (
+    DoorStatePollingService,
+)
 
 __all__ = [
     "CLOSE_DOOR_COMMAND",
@@ -34,6 +37,7 @@ __all__ = [
     "DoorGateway",
     "DoorMqttPublisher",
     "DoorMqttTopics",
+    "DoorStatePollingService",
     "chicken_door",
     "chicken_door_mqtt_callbacks",
     "close_door_command",

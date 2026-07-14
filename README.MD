@@ -7,7 +7,8 @@ camera endpoints, or inference APIs itself.
 
 The current bridge supports:
 
-- Omlet chicken door control through `smartcoop-python-sdk`
+- Omlet chicken door control and automatic state polling through
+  `smartcoop-python-sdk`
 - Retained MQTT door status topics for state, numeric status, fault, connection,
   battery, and light level
 - Chicken threat assessment from either injected MQTT detection payloads or an
@@ -112,9 +113,16 @@ Required values are:
 
 Common optional values include `MQTT_PORT`, `MQTT_USE_TLS`, `HTTP_HOST`,
 `HTTP_PORT`, `LOG_LEVEL`, `LOG_FILE_PATH`, `BRIDGE_DEVICES_ENABLED`,
-`CAMERA_HOST`, `CAMERA_PORT`, `CHICKEN_THREAT_ENABLED`,
-`CHICKEN_THREAT_INFERENCE_URL`, and
+`DOOR_POLL_INTERVAL_SECONDS`, `CAMERA_HOST`, `CAMERA_PORT`,
+`CHICKEN_THREAT_ENABLED`, `CHICKEN_THREAT_INFERENCE_URL`, and
 `CHICKEN_THREAT_POLL_INTERVAL_SECONDS`.
+
+When `chicken_door` is enabled, the bridge requests the complete Omlet door
+state immediately after MQTT startup and then every
+`DOOR_POLL_INTERVAL_SECONDS` (default `5`). The first successful response is
+published to the retained door topics; later responses are published only when
+the position or telemetry changes. Polling runs locally through the Omlet API
+and does not require webhooks, public ports, DNS, or TLS certificates.
 
 Set `MQTT_BASE_TOPIC` to the namespace only, for example
 `smart-home-bridge`. Device topics are appended by the bridge.
@@ -178,10 +186,10 @@ for that device, or install both independently. Do not upload a GitHub source
 archive or a ZIP of the repository root; LoxBerry expects `plugin.cfg` directly
 at the archive root.
 
-`OmletChickenDoorPlugin` contains door credentials, door topics, retained door
-state subscriptions, and manual door commands. `ChickenBarnCameraPlugin`
-contains camera, detector, and external inference settings without requiring
-Omlet credentials.
+`OmletChickenDoorPlugin` contains door credentials, polling frequency, door
+topics, retained door state subscriptions, and manual door commands.
+`ChickenBarnCameraPlugin` contains camera, detector, and external inference
+settings without requiring Omlet credentials.
 
 When `SMART_HOME_BRIDGE_CONFIG_SOURCE=loxberry`, the bridge reads MQTT broker
 settings from LoxBerry's system MQTT configuration and bridge-specific settings

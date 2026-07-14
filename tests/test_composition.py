@@ -74,6 +74,20 @@ def test_thread_detector_runtime_skips_disabled_threat_pipeline():
     assert runtime.background_services == ()
 
 
+def test_chicken_door_runtime_exposes_state_polling_as_lifecycle_service():
+    config = _config()
+    composition = create_bridge_composition(config)
+    runtime = _device_composition(composition, "chicken_door").create_runtime(
+        lambda _: FakeMqttClient(),
+    )
+    polling_service = runtime.handles["door_state_polling"]
+
+    assert polling_service.controller is composition.door_controller
+    assert polling_service.poll_interval_seconds == 5
+    assert polling_service.status_file_path.name == "door-poll-status.json"
+    assert runtime.background_services == (polling_service,)
+
+
 def test_bridge_composition_uses_enabled_device_list():
     composition = create_bridge_composition(
         _config(devices=BridgeDevicesConfig(enabled=("chicken_door",))),

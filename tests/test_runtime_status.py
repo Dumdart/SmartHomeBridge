@@ -50,6 +50,11 @@ def test_backend_status_redacts_secrets_and_reports_topics():
     assert status["mqtt"]["host"] == "mqtt.local"
     assert status["mqtt"]["password_configured"] is True
     assert status["camera"]["auth_token_configured"] is True
+    assert status["door_polling"] == {
+        "enabled": True,
+        "poll_interval_seconds": 5.0,
+        "running": False,
+    }
     assert status["devices"]["runtimes"][0]["mqtt_bindings"][0]["topic"] == (
         "smart-home-bridge/chicken-door/command"
     )

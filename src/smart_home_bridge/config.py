@@ -20,6 +20,11 @@ class DoorApiConfig:
 
 
 @dataclass(frozen=True)
+class DoorPollingConfig:
+    poll_interval_seconds: float = 5.0
+
+
+@dataclass(frozen=True)
 class MqttConfig:
     host: str
     port: int
@@ -91,6 +96,7 @@ class app_config:
     http: HttpConfig
     log_level: str
     log_file_path: str = "logs/smart-home-bridge.log"
+    door_polling: DoorPollingConfig = field(default_factory=DoorPollingConfig)
     camera: CameraConfig = field(default_factory=CameraConfig)
     chicken_threat: ChickenThreatConfig = field(default_factory=ChickenThreatConfig)
     devices: BridgeDevicesConfig = field(default_factory=BridgeDevicesConfig)
@@ -161,6 +167,13 @@ def _config_from_mapping(
         ),
         log_level=_get(values, "LOG_LEVEL", "INFO"),
         log_file_path=_get(values, "LOG_FILE_PATH", "logs/smart-home-bridge.log"),
+        door_polling=DoorPollingConfig(
+            poll_interval_seconds=_positive_float(
+                values,
+                "DOOR_POLL_INTERVAL_SECONDS",
+                5.0,
+            ),
+        ),
         camera=CameraConfig(
             host=_get(values, "CAMERA_HOST", "192.168.1.42"),
             port=_int(values, "CAMERA_PORT", 80),
@@ -230,6 +243,13 @@ def _float(values: Mapping[str, str], name: str, default: float) -> float:
         return float(value)
     except ValueError as exc:
         raise ValueError(f"Environment variable {name} must be a number") from exc
+
+
+def _positive_float(values: Mapping[str, str], name: str, default: float) -> float:
+    value = _float(values, name, default)
+    if value <= 0:
+        raise ValueError(f"Environment variable {name} must be greater than zero")
+    return value
 
 
 def _bool(values: Mapping[str, str], name: str, default: bool) -> bool:

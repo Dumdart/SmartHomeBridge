@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from pathlib import Path
 
 from smart_home_bridge.bridge_devices.chicken_door import (
     DoorGateway,
     DoorMqttPublisher,
     DoorMqttTopics,
+    DoorStatePollingService,
     chicken_door,
     chicken_door_mqtt_callbacks,
     door_controller,
@@ -60,6 +62,11 @@ def create_chicken_door_composition(
                 position.value if position is not None else None,
             )
         )
+        polling_service = DoorStatePollingService(
+            controller,
+            config.door_polling.poll_interval_seconds,
+            Path(config.log_file_path).with_name("door-poll-status.json"),
+        )
 
         return BridgeDeviceRuntime(
             name=device_config.name or "chicken_door",
@@ -80,10 +87,12 @@ def create_chicken_door_composition(
                     ),
                 ),
             ),
+            background_services=(polling_service,),
             handles={
                 "chicken_door_mqtt_gate": gate,
                 "door_mqtt_publisher": publisher,
                 "door_usage_reporter": usage_reporter,
+                "door_state_polling": polling_service,
             },
         )
 
