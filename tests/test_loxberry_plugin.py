@@ -110,6 +110,7 @@ def test_omlet_plugin_contains_only_door_configuration(tmp_path):
         "config/smart-home-bridge.ini"
     ]
     assert "DOOR_API_KEY=" in text["config/smart-home-bridge.ini"]
+    assert "smart-home-bridge/chicken-door" in text["mqtt_subscriptions.cfg"]
     assert "DOOR_POLL_INTERVAL_SECONDS=5" in text["config/smart-home-bridge.ini"]
     assert "DOOR_POLL_INTERVAL_SECONDS" in text["webfrontend/htmlauth/plugin.php"]
     assert "Latest polled state" in text["webfrontend/htmlauth/plugin.php"]

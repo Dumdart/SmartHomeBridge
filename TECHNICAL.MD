@@ -468,8 +468,12 @@ Usage events are JSON and non-retained.
 Door command usage topic:
 
 ```text
-smart-home-bridge/usage/chicken-door
+smart-home-bridge/chicken-door
 ```
+
+The aggregate uses the same `chicken-door` topic family as steering and state
+telemetry. It is published on the family root, not the
+`chicken-door/command` input topic, so reporting cannot execute a command.
 
 Payload shape:
 

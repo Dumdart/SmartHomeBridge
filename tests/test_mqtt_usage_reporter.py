@@ -15,7 +15,7 @@ def test_reports_chicken_door_usage_event_to_mqtt():
     asyncio.run(reporter.report_chicken_door("open_door", True, "open"))
 
     topic, payload, retain = published[0]
-    assert topic == "smart-home-bridge/usage/chicken-door"
+    assert topic == "smart-home-bridge/chicken-door"
     assert retain is False
     assert payload["event"] == "chicken_door_command"
     assert payload["command"] == "open_door"
