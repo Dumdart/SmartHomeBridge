@@ -12,7 +12,10 @@ from smart_home_ml.chicken_threat.artifacts import (
     train_model,
 )
 from smart_home_ml.chicken_threat.dataset import build_dataset, inspect_dataset
-from smart_home_ml.chicken_threat.downloads import download_datasets
+from smart_home_ml.chicken_threat.downloads import (
+    download_datasets,
+    validate_metadata_manifest_coverage,
+)
 
 
 def build_dataset_main() -> None:
@@ -50,6 +53,7 @@ def prepare_local_dataset_main() -> None:
     args = parser.parse_args()
 
     workspace = args.workspace.resolve()
+    validate_metadata_manifest_coverage(workspace)
     repository_root = Path(__file__).resolve().parents[3]
     dataset_root = build_dataset(
         workspace / "source_metadata.csv",

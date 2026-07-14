@@ -73,6 +73,7 @@ def test_local_dataset_command_uses_the_ignored_workspace(monkeypatch, tmp_path,
         return built_dataset
 
     monkeypatch.setattr(cli, "build_dataset", fake_build_dataset)
+    monkeypatch.setattr(cli, "validate_metadata_manifest_coverage", lambda workspace: None)
     monkeypatch.setattr(
         "sys.argv",
         ["smart-home-ml-prepare-local-dataset", "--workspace", str(workspace)],
@@ -87,6 +88,45 @@ def test_local_dataset_command_uses_the_ignored_workspace(monkeypatch, tmp_path,
     assert captured["class_mapping"].name == "class_mapping.yaml"
     assert captured["dataset_config"].name == "dataset.yaml"
     assert capsys.readouterr().out.strip() == str(built_dataset)
+
+
+def test_local_dataset_command_rejects_metadata_missing_completed_manifest_records(
+    monkeypatch, tmp_path,
+):
+    workspace = tmp_path / "work"
+    image_path = workspace / "raw/poultry/train/images/kept.jpg"
+    label_path = workspace / "raw/poultry/train/labels/kept.txt"
+    image_path.parent.mkdir(parents=True)
+    label_path.parent.mkdir(parents=True)
+    Image.new("RGB", (16, 16), "white").save(image_path)
+    label_path.write_text("0 0.5 0.5 0.5 0.5\n", encoding="utf-8")
+    record = downloads.DownloadRecord(
+        image_path=image_path,
+        label_path=label_path,
+        source="poultry",
+        capture_group="poultry:kept",
+        lighting="day",
+        split="train",
+    )
+    manifest_path = workspace / "manifests" / "poultry.json"
+    manifest_path.parent.mkdir(parents=True)
+    downloads._write_manifest(
+        manifest_path,
+        workspace,
+        [record],
+        {"name": "poultry", "status": "downloaded", "records": 1},
+    )
+    metadata_path = workspace / "source_metadata.csv"
+    metadata_path.write_text(
+        "image_path,label_path,source,capture_group,lighting,split,captured_at\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "sys.argv", ["smart-home-ml-prepare-local-dataset", "--workspace", str(workspace)]
+    )
+
+    with pytest.raises(downloads.DatasetDownloadError, match="source_metadata.csv is incomplete"):
+        cli.prepare_local_dataset_main()
 
 
 def test_download_command_uses_default_workspace_and_forwards_controls(monkeypatch, capsys):

@@ -828,6 +828,52 @@ def _write_source_metadata(
     return len(rows), duplicates
 
 
+def validate_metadata_manifest_coverage(workspace: Path) -> None:
+    """Reject metadata that silently omits records from completed source manifests."""
+    metadata_path = workspace / "source_metadata.csv"
+    if not metadata_path.is_file() or not (workspace / "manifests").is_dir():
+        return
+
+    with metadata_path.open(newline="", encoding="utf-8") as handle:
+        metadata_images = {
+            row.get("image_path", "").replace("\\", "/") for row in csv.DictReader(handle)
+        }
+
+    missing_by_source: dict[str, int] = {}
+    for manifest_path in sorted((workspace / "manifests").glob("*.json")):
+        records = _load_complete_manifest(manifest_path, workspace)
+        if not records:
+            continue
+        missing = sum(
+            record.metadata_row(workspace)["image_path"] not in metadata_images for record in records
+        )
+        if missing:
+            missing_by_source[manifest_path.stem] = missing
+
+    missing_count = sum(missing_by_source.values())
+    report_path = workspace / "download_report.json"
+    allowed_duplicates = 0
+    if report_path.is_file():
+        try:
+            allowed_duplicates = int(
+                json.loads(report_path.read_text(encoding="utf-8")).get(
+                    "duplicate_images_skipped", 0
+                )
+            )
+        except (ValueError, TypeError, json.JSONDecodeError):
+            allowed_duplicates = 0
+
+    if missing_count > allowed_duplicates:
+        details = ", ".join(
+            f"{source}={count}" for source, count in sorted(missing_by_source.items())
+        )
+        raise DatasetDownloadError(
+            "source_metadata.csv is incomplete compared with completed manifests "
+            f"({details}). Rebuild it without downloading by running: "
+            "uv run --extra ml smart-home-ml-download-datasets --source poultry_roboflow"
+        )
+
+
 def _parse_yolo_line(line: str) -> tuple[int, tuple[float, float, float, float]] | None:
     values = line.split()
     if len(values) < 5:

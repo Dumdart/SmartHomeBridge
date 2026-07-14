@@ -28,6 +28,12 @@ Inspect `download_report.json`, then build the validated training archive explic
 uv run --extra ml smart-home-ml-prepare-local-dataset
 ```
 
+Do not call downloader helpers such as `_write_source_metadata` from an ad-hoc Python snippet;
+that helper writes only the records passed to it and can replace the combined CSV. The local
+preparation command verifies that every completed manifest is represented before building. If
+the check reports incomplete metadata, rerun the downloader for any cached source (for example
+`--source poultry_roboflow`) to regenerate the combined CSV without reacquiring the datasets.
+
 The command writes the built dataset, inspection report, inspection bundle, and dataset archive below `ml/chicken_threat/work/datasets/`. This avoids transferring raw source data to and from Colab. Inspect the report and bundle locally, then upload only an approved archive to Kaggle for candidate training. Train and evaluate a candidate in Kaggle, including both `v4_test` and `barn_holdout`, then package it locally. Promotion requires a clean comparison to the current production baseline, explicit false-alarm review in the candidate manifest, and `--approve`.
 
 The only model admitted to a SmartHomeBridge release is `src/smart_home_inference/models/chicken_thread/model/chicken_threat_detector.pt`, tracked by Git LFS and verified against `model_manifest.yaml`.
