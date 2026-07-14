@@ -22,6 +22,7 @@ def test_inference_dockerfile_installs_inference_dependencies_for_default_detect
     assert "YOLO_CONFIG_DIR=/tmp/Ultralytics" in dockerfile
     assert ".[inference]" in dockerfile
     assert 'CMD ["smart-home-inference"]' in dockerfile
+    assert "chicken_threat_detector.pt" in Path("pyproject.toml").read_text()
 
 
 def test_compose_splits_bridge_and_inference_profiles():

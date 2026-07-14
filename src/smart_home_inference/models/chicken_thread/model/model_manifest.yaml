@@ -1,0 +1,39 @@
+model_id: chicken-threat-yolo11m-v4
+file: chicken_threat_detector.pt
+sha256: 90b39380d29fd18f1e8034e806fede77749706881f39a7c5656183efbe8a082b
+training_classes:
+  - chicken
+  - other_poultry
+  - rodent
+  - fox
+  - cat
+  - dog
+  - bird_of_prey
+  - other_bird
+  - person
+runtime_classes:
+  - chicken
+  - other_poultry
+  - person
+  - cat
+  - dog
+  - wild_mammal_threat
+  - rodent
+  - bird
+class_mapping:
+  chicken: chicken
+  other_poultry: other_poultry
+  rodent: rodent
+  fox: wild_mammal_threat
+  cat: cat
+  dog: dog
+  bird_of_prey: bird
+  other_bird: bird
+  person: person
+dataset_manifest_sha256: external-v4-baseline-pending
+git_commit: external-v4-baseline-pending
+training_config_sha256: external-v4-baseline-pending
+evaluations: {}
+thresholds:
+  confidence: 0.35
+  image_size: 640

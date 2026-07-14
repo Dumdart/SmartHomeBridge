@@ -1,1 +1,1 @@
-"""Packaged chicken threat detector model artifacts."""
+"""Git-LFS-managed, manifest-verified production model artifacts."""

@@ -13,6 +13,11 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -20,13 +25,14 @@ jobs:
           python-version: "3.11"
           cache: pip
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
+      - name: Validate locked dependencies
+        run: uv lock --check
+
+      - name: Install test dependencies
+        run: uv sync --extra dev --locked
 
       - name: Run tests
-        run: pytest
+        run: uv run pytest
 
   docker:
     name: Docker Build
@@ -36,6 +42,11 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - name: Build image
         run: docker build -t loxone-bridge:ci .
+
+      - name: Build inference image
+        run: docker build -f Dockerfile.inference -t smart-home-inference:ci .

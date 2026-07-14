@@ -35,3 +35,8 @@ AGENTS.md
 src/firmware/esp32cam_extention/include/secrets.h
 smarthomebridge-loxberry.zip
 .agents/
+
+# ML workspaces and generated artifacts
+ml/chicken_threat/work/
+ml/chicken_threat/outputs/
+ml/chicken_threat/.venv/

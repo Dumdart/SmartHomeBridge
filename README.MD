@@ -12,12 +12,19 @@ The current bridge supports:
   battery, and light level
 - Chicken threat assessment from either injected MQTT detection payloads or an
   optional ESP32-CAM polling pipeline
-- Split inference backend with YOLO-based chicken threat detection and the
-  packaged `chicken_threat_detector_best_v4.pt` model
+- Split inference backend with YOLO-based chicken threat detection and one
+  Git-LFS-managed, manifest-verified production model
 - Optional PySide6 desktop diagnostics and manual controls
 - Docker runtimes for the bridge service and optional inference service
 - Modular LoxBerry plugin packaging, settings, service control, log tail, and
   device-specific controls
+
+
+Supported LoxBerry Plugins:
+
+- OmletChickenDoorPlugin
+- ChickenBarnCameraPlugin
+
 
 For deeper architecture, MQTT, Loxone, and configuration details, see
 [TECHNICAL.MD](TECHNICAL.MD).
@@ -38,6 +45,7 @@ Install optional extras when needed:
 ```bash
 pip install -e ".[gui]"
 pip install -e ".[inference]"
+pip install -e ".[ml]"        # dataset/training/promotion workflow
 ```
 
 3. Run the backend:
@@ -53,6 +61,19 @@ smart-home-inference
 ```
 
 The inference backend requires the `inference` extra.
+
+## Chicken-Threat ML Workflow
+
+The training lifecycle is deliberately separate from deployment. A local,
+gitignored ML workspace prepares and inspects a source-metadata-driven dataset,
+Kaggle trains a candidate, and a human promotes a candidate only after the
+fixed v4 test and barn holdout gates pass. The release contains only the
+approved production model in the inference package/image; LoxBerry continues to
+use the external inference service.
+
+Install the locked environment with `uv sync --extra ml --locked`, then see
+[the ML workflow guide](ml/chicken_threat/README.md). Candidate weights,
+datasets, and source images must not be committed.
 
 5. Run the optional desktop GUI:
 

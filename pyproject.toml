@@ -19,6 +19,7 @@ dependencies = [
 dev = [
     "httpx",
     "Pillow",
+    "PyYAML",
     "pytest",
     "starlette",
 ]
@@ -28,9 +29,22 @@ gui = [
 ]
 inference = [
     "Pillow",
+    "PyYAML",
     "starlette",
     "ultralytics",
     "uvicorn",
+]
+ml = [
+    "fiftyone>=1.2.0",
+    "Pillow==11.3.0",
+    "PyYAML==6.0.2",
+    "matplotlib==3.10.5",
+    "numpy==2.2.6; python_version < '3.14'",
+    "numpy>=2.5.0,<3; python_version >= '3.14'",
+    "requests>=2.32.0",
+    "roboflow>=1.1.58",
+    "tqdm>=4.67.0",
+    "ultralytics==8.3.185",
 ]
 
 [project.scripts]
@@ -39,6 +53,15 @@ smart-home-bridge-status = "smart_home_bridge.__main__:status"
 smart-home-bridge-config-check = "smart_home_bridge.__main__:config_check"
 smart-home-bridge-door-command = "smart_home_bridge.__main__:door_command"
 smart-home-inference = "smart_home_inference.__main__:main"
+smart-home-ml-build-dataset = "smart_home_ml.chicken_threat.cli:build_dataset_main"
+smart-home-ml-inspect-dataset = "smart_home_ml.chicken_threat.cli:inspect_dataset_main"
+smart-home-ml-download-datasets = "smart_home_ml.chicken_threat.cli:download_datasets_main"
+smart-home-ml-prepare-local-dataset = "smart_home_ml.chicken_threat.cli:prepare_local_dataset_main"
+smart-home-ml-train = "smart_home_ml.chicken_threat.cli:train_main"
+smart-home-ml-evaluate = "smart_home_ml.chicken_threat.cli:evaluate_main"
+smart-home-ml-package-candidate = "smart_home_ml.chicken_threat.cli:package_candidate_main"
+smart-home-ml-compare-baseline = "smart_home_ml.chicken_threat.cli:compare_baseline_main"
+smart-home-ml-promote-model = "smart_home_ml.chicken_threat.cli:promote_model_main"
 
 [project.gui-scripts]
 smart-home-bridge-gui = "smart_home_bridge.gui:run"
@@ -47,4 +70,7 @@ smart-home-bridge-gui = "smart_home_bridge.gui:run"
 where = ["src"]
 
 [tool.setuptools.package-data]
-"smart_home_inference.models.chicken_thread.model" = ["chicken_threat_detector_best_v4.pt"]
+"smart_home_inference.models.chicken_thread.model" = [
+    "chicken_threat_detector.pt",
+    "model_manifest.yaml",
+]

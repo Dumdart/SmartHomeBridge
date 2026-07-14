@@ -164,7 +164,7 @@ Inference backend settings:
 
 - `INFERENCE_HTTP_HOST`, default `0.0.0.0`
 - `INFERENCE_HTTP_PORT`, default `8090`
-- `CHICKEN_THREAT_MODEL_PATH`, defaults to the packaged v3 model
+- `CHICKEN_THREAT_MODEL_PATH`, defaults to the manifest-verified packaged production model
 - `CHICKEN_THREAT_CONFIDENCE_THRESHOLD`, default `0.35`
 - `CHICKEN_THREAT_IMAGE_SIZE`, default `640`
 
@@ -444,7 +444,7 @@ Inference backend settings:
 
 - `INFERENCE_HTTP_HOST`, default `0.0.0.0`
 - `INFERENCE_HTTP_PORT`, default `8090`
-- `CHICKEN_THREAT_MODEL_PATH`, defaults to the packaged v3 model
+- `CHICKEN_THREAT_MODEL_PATH`, defaults to the manifest-verified packaged production model
 - `CHICKEN_THREAT_CONFIDENCE_THRESHOLD`, default `0.35`
 - `CHICKEN_THREAT_IMAGE_SIZE`, default `640`
 

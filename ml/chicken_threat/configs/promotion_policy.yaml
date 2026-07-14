@@ -1,0 +1,8 @@
+max_map50_95_drop: 0.0
+max_runtime_recall_drop: 0.0
+required_runtime_labels:
+  - wild_mammal_threat
+  - cat
+  - dog
+  - rodent
+  - bird

@@ -1,0 +1,130 @@
+version: 1
+seed: 42
+canonical_classes:
+  - chicken
+  - other_poultry
+  - rodent
+  - fox
+  - cat
+  - dog
+  - bird_of_prey
+  - other_bird
+  - person
+sources:
+  poultry_roboflow:
+    type: roboflow_yolo
+    enabled: true
+    workspace: tmp-dulho
+    project: poultry-and-predators-detection-um2x6
+    version: 2
+    keep_empty_images: false
+    class_map:
+      Chicken: chicken
+      Duck: other_poultry
+      Geese: other_poultry
+      Goose: other_poultry
+      Turkey: other_poultry
+      Rodent: rodent
+      Ostrich: null
+      Quail: null
+      Emu: null
+      Guinea Fowl: null
+      Egg: null
+  chicken_barn_roboflow:
+    type: roboflow_yolo
+    enabled: true
+    required: false
+    workspace: paul-thumfart
+    project: chicken-barn-images
+    version: null
+    keep_empty_images: true
+    class_map:
+      Chicken: chicken
+      chicken: chicken
+      Fox: fox
+      fox: fox
+      Dog: dog
+      dog: dog
+      Cat: cat
+      cat: cat
+      Person: person
+      person: person
+      Bird: other_bird
+      bird: other_bird
+      Other Bird: other_bird
+      other bird: other_bird
+      other_bird: other_bird
+      "null": null
+      "Null": null
+      "NULL": null
+  open_images:
+    type: open_images
+    enabled: true
+    download_workers: 8
+    class_map:
+      Fox: fox
+      Cat: cat
+      Dog: dog
+      Eagle: bird_of_prey
+      Owl: bird_of_prey
+      Bird: other_bird
+      Chicken: chicken
+      Duck: other_poultry
+      Goose: other_poultry
+      Person: person
+    target_images:
+      train: {Fox: 250, Cat: 250, Dog: 250, Eagle: 150, Owl: 150, Bird: 150, Chicken: 150, Duck: 150, Goose: 150, Person: 120}
+      valid: {Fox: 50, Cat: 50, Dog: 50, Eagle: 40, Owl: 40, Bird: 40, Chicken: 30, Duck: 30, Goose: 30, Person: 30}
+      test: {Fox: 50, Cat: 50, Dog: 50, Eagle: 40, Owl: 40, Bird: 40, Chicken: 30, Duck: 30, Goose: 30, Person: 30}
+  channel_islands_camera_traps:
+    type: lila_coco
+    enabled: true
+    download_workers: 8
+    metadata_url: https://storage.googleapis.com/public-datasets-lila/channel-islands-camera-traps/channel-islands-camera-traps.json.zip
+    image_base_url: https://lilawildlife.blob.core.windows.net/lila-wildlife/channel-islands-camera-traps/images
+    class_map: {fox: fox, rodent: rodent, bird: other_bird}
+    object_caps:
+      train: {fox: 2600, rodent: 1800, other_bird: 1000}
+      valid: {fox: 320, rodent: 240, other_bird: 180}
+      test: {fox: 320, rodent: 240, other_bird: 180}
+  ena24_detection:
+    type: lila_coco
+    enabled: true
+    download_workers: 8
+    metadata_url: https://storage.googleapis.com/public-datasets-lila/ena24/ena24_public.json
+    image_base_url: https://lilawildlife.blob.core.windows.net/lila-wildlife/ena24/images
+    class_map:
+      dog: dog
+      domestic dog: dog
+      red fox: fox
+      fox: fox
+      cat: cat
+      domestic cat: cat
+      squirrel: rodent
+      mouse: rodent
+      rat: rodent
+      owl: bird_of_prey
+      hawk: bird_of_prey
+      eagle: bird_of_prey
+      american crow: other_bird
+      crow: other_bird
+      bird: other_bird
+    object_caps:
+      train: {fox: 2600, dog: 2200, cat: 1400, rodent: 1800, bird_of_prey: 1000, other_bird: 1000}
+      valid: {fox: 320, dog: 260, cat: 220, rodent: 240, bird_of_prey: 180, other_bird: 180}
+      test: {fox: 320, dog: 260, cat: 220, rodent: 240, bird_of_prey: 180, other_bird: 180}
+  caltech_camera_traps_boxes:
+    type: lila_coco
+    enabled: true
+    download_workers: 8
+    metadata_url: https://storage.googleapis.com/public-datasets-lila/caltechcameratraps/labels/caltech_bboxes_20200316.json
+    image_base_url: https://lilawildlife.blob.core.windows.net/lila-wildlife/caltech-unzipped/cct_images
+    class_map: {coyote: dog, dog: dog, bobcat: cat, cat: cat, squirrel: rodent, mouse: rodent, rat: rodent, bird: other_bird}
+    object_caps:
+      train: {dog: 2200, cat: 1400, rodent: 1800, other_bird: 1000}
+      valid: {dog: 260, cat: 220, rodent: 240, other_bird: 180}
+      test: {dog: 260, cat: 220, rodent: 240, other_bird: 180}
+  unsw_predators:
+    type: unsupported
+    enabled: true
+    skip_reason: "The public metadata has image-level labels but no usable bounding boxes."

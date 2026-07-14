@@ -1,0 +1,10 @@
+training_to_runtime:
+  chicken: chicken
+  other_poultry: other_poultry
+  rodent: rodent
+  fox: wild_mammal_threat
+  cat: cat
+  dog: dog
+  bird_of_prey: bird
+  other_bird: bird
+  person: person
