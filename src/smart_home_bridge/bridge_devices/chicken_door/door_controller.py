@@ -1,6 +1,9 @@
-import logging
+import asyncio
 import inspect
+import logging
+import threading
 from collections.abc import Awaitable, Callable
+from contextlib import asynccontextmanager
 
 from smart_home_bridge.bridge_devices.chicken_door.chicken_door import chicken_door, door_position
 from smart_home_bridge.bridge_devices.chicken_door.door_gateway import DoorGateway
@@ -38,7 +41,7 @@ class door_command(command):
 
     async def execute_gateway(self, operation):
         try:
-            status = operation()
+            status = await asyncio.to_thread(operation)
             state = self.apply_status(status)
             await self.publish_status(status)
             return command_result(data=state)
@@ -107,6 +110,7 @@ class door_controller(device_controller):
         self.gateway = gateway
         self.publishable = publishable
         self.usage_reporter = usage_reporter
+        self._operation_lock = threading.Lock()
 
     def set_publishable(self, publishable: Publishable | None):
         self.publishable = publishable
@@ -122,10 +126,41 @@ class door_controller(device_controller):
         return command_type(self.device, self.publishable, self.gateway)
 
     async def excecute_command(self, command: str) -> command_result:
-        command_instance = self.get_command(command)
-        result = await command_instance.excecute()
+        async with self._serialized_operation():
+            command_instance = self.get_command(command)
+            result = await command_instance.excecute()
         await self._report_usage(command, result)
         return result
+
+    async def poll_state(
+        self,
+        previous_status: door_status | None,
+    ) -> door_status | None:
+        async with self._serialized_operation():
+            try:
+                if self.gateway is None:
+                    status = door_status(self.device.get_device_state())
+                else:
+                    status = await asyncio.to_thread(self.gateway.get_state)
+
+                self.device.set_device_state(status.position)
+                if status != previous_status and self.publishable is not None:
+                    publish_result = self.publishable(status)
+                    if inspect.isawaitable(publish_result):
+                        await publish_result
+                return status
+            except Exception:
+                logger.exception("Door state poll failed.")
+                return None
+
+    @asynccontextmanager
+    async def _serialized_operation(self):
+        while not self._operation_lock.acquire(blocking=False):
+            await asyncio.sleep(0.01)
+        try:
+            yield
+        finally:
+            self._operation_lock.release()
 
     async def _report_usage(self, command: str, result: command_result):
         if self.usage_reporter is None:

@@ -25,6 +25,14 @@ def build_backend_status(
         },
         "log_level": config.log_level,
         "log_file_path": config.log_file_path,
+        "door_polling": {
+            "enabled": config.devices.is_enabled("chicken_door"),
+            "poll_interval_seconds": config.door_polling.poll_interval_seconds,
+            "running": _background_service_running(
+                device_runtimes,
+                "DoorStatePollingService",
+            ),
+        },
         "camera": {
             "host": config.camera.host,
             "port": config.camera.port,
@@ -69,8 +77,20 @@ def _runtime_status(config: app_config, runtime: BridgeDeviceRuntime) -> dict[st
 
 
 def _pipeline_running(device_runtimes: tuple[BridgeDeviceRuntime, ...]) -> bool:
+    return _background_service_running(
+        device_runtimes,
+        "ChickenThreatDetectionPipeline",
+    )
+
+
+def _background_service_running(
+    device_runtimes: tuple[BridgeDeviceRuntime, ...],
+    service_type_name: str,
+) -> bool:
     for runtime in device_runtimes:
         for service in runtime.background_services:
+            if type(service).__name__ != service_type_name:
+                continue
             is_running = getattr(service, "is_running", None)
             if isinstance(is_running, bool) and is_running:
                 return True

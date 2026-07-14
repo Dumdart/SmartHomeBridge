@@ -433,3 +433,65 @@ def test_load_loxberry_config_uses_selected_plugin_folder(tmp_path, monkeypatch)
     assert config.log_file_path == str(
         log_dir / "chickenbarncamera" / "smart-home-bridge.log"
     )
+
+
+def test_load_config_uses_default_door_polling_interval(tmp_path, monkeypatch):
+    env_path = _write_minimum_env(tmp_path)
+    monkeypatch.delenv("DOOR_POLL_INTERVAL_SECONDS", raising=False)
+
+    config = load_config(str(env_path), override=True)
+
+    assert config.door_polling.poll_interval_seconds == 5
+
+
+def test_load_config_accepts_fractional_door_polling_interval(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.delenv("DOOR_POLL_INTERVAL_SECONDS", raising=False)
+    env_path = _write_minimum_env(
+        tmp_path,
+        "DOOR_POLL_INTERVAL_SECONDS=2.5",
+    )
+
+    config = load_config(str(env_path), override=True)
+
+    assert config.door_polling.poll_interval_seconds == 2.5
+
+
+def test_load_config_rejects_non_positive_door_polling_interval(
+    tmp_path,
+    monkeypatch,
+):
+    env_path = _write_minimum_env(tmp_path)
+
+    for value in ("0", "-1"):
+        monkeypatch.setenv("DOOR_POLL_INTERVAL_SECONDS", value)
+        try:
+            load_config(str(env_path), override=False)
+        except ValueError as exc:
+            assert str(exc) == (
+                "Environment variable DOOR_POLL_INTERVAL_SECONDS "
+                "must be greater than zero"
+            )
+        else:
+            raise AssertionError("Expected a non-positive interval to be rejected")
+
+
+def _write_minimum_env(tmp_path, *extra_lines):
+    env_path = tmp_path / ".env-polling"
+    env_path.write_text(
+        "\n".join(
+            (
+                "DOOR_API_KEY=api-key",
+                "DOOR_DEVICE_ID=device-id",
+                "MQTT_HOST=mqtt.local",
+                "MQTT_USERNAME=user",
+                "MQTT_PASSWORD=password",
+                "MQTT_BASE_TOPIC=bridge",
+                *extra_lines,
+            )
+        )
+        + "\n"
+    )
+    return env_path
