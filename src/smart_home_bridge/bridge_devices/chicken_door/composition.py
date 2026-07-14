@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from pathlib import Path
 
 from smart_home_bridge.bridge_devices.chicken_door import (
     DoorGateway,
@@ -64,6 +65,7 @@ def create_chicken_door_composition(
         polling_service = DoorStatePollingService(
             controller,
             config.door_polling.poll_interval_seconds,
+            Path(config.log_file_path).with_name("door-poll-status.json"),
         )
 
         return BridgeDeviceRuntime(

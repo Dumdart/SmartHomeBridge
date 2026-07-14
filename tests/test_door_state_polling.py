@@ -1,4 +1,5 @@
 import asyncio
+import json
 import threading
 import time
 
@@ -108,6 +109,47 @@ def test_polling_does_not_emit_command_usage_events():
     asyncio.run(DoorStatePollingService(controller, 5).run_once())
 
     assert usage_events == []
+
+
+def test_polling_writes_changed_status_for_the_ui(tmp_path):
+    initial = door_status(
+        door_position.CLOSED,
+        fault="none",
+        connected=True,
+        battery_level=82,
+        light_level=31,
+    )
+    changed = door_status(
+        door_position.OPEN,
+        fault="none",
+        connected=True,
+        battery_level=81,
+        light_level=33,
+    )
+    status_path = tmp_path / "door-poll-status.json"
+    controller = door_controller(
+        chicken_door(1, "door", door_position.UNKNOWN),
+        gateway=SequenceGateway([initial, initial, changed]),
+        publishable=lambda _status: None,
+    )
+    service = DoorStatePollingService(controller, 5, status_path)
+
+    async def scenario():
+        await service.run_once()
+        first_contents = status_path.read_text()
+        await service.run_once()
+        assert status_path.read_text() == first_contents
+        await service.run_once()
+
+    asyncio.run(scenario())
+
+    values = json.loads(status_path.read_text())
+    assert values["position"] == "open"
+    assert values["connected"] is True
+    assert values["battery_level"] == 81
+    assert values["light_level"] == 33
+    assert values["updated_at"].endswith("+00:00")
+    assert not status_path.with_suffix(".json.tmp").exists()
 
 
 def test_polling_starts_immediately_and_stops_cleanly():

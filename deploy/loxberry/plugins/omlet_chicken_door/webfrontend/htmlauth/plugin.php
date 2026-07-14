@@ -7,7 +7,8 @@ $fixedSettings = array('BRIDGE_DEVICES_ENABLED' => 'chicken_door');
 $allowedDoorCommands = array('open_door', 'close_door', 'stop_door', 'get_door_state');
 $statusCards = array(
     array('label' => 'Omlet credentials', 'setting' => 'DOOR_API_KEY', 'kind' => 'configured', 'tone' => 'good'),
-    array('label' => 'Last known door state', 'value' => 'Awaiting telemetry'),
+    array('label' => 'Door polling', 'setting' => 'DOOR_POLL_INTERVAL_SECONDS', 'kind' => 'poll-interval', 'tone' => 'good'),
+    array('label' => 'Latest polled state', 'kind' => 'door-poll-status', 'id' => 'door-poll-status'),
 );
 $diagnosticActions = array('test-door' => 'Test API & device');
 $fieldSchema = array(

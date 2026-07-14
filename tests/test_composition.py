@@ -84,6 +84,7 @@ def test_chicken_door_runtime_exposes_state_polling_as_lifecycle_service():
 
     assert polling_service.controller is composition.door_controller
     assert polling_service.poll_interval_seconds == 5
+    assert polling_service.status_file_path.name == "door-poll-status.json"
     assert runtime.background_services == (polling_service,)
 
 

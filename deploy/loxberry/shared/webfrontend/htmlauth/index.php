@@ -11,9 +11,17 @@ $lbplog = getenv('LBPLOG') ?: './logs';
 $bridgeConfig = $lbpconfig . '/' . $pluginFolder . '/smart-home-bridge.ini';
 $bridgeCtl = $lbpbin . '/' . $pluginFolder . '/bridge_ctl.sh';
 $logFile = $lbplog . '/' . $pluginFolder . '/smart-home-bridge.log';
+$pollStatusFile = dirname($logFile) . '/door-poll-status.json';
 $allowedCommands = array('start', 'stop', 'restart', 'status', 'dump-config');
 $csrfToken = $_SESSION['csrf_token'] ?? bin2hex(random_bytes(24));
 $_SESSION['csrf_token'] = $csrfToken;
+
+if (($_GET['action'] ?? '') === 'door-poll-status') {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    echo json_encode(read_door_poll_status($pollStatusFile));
+    exit;
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!hash_equals($csrfToken, (string) ($_POST['csrf_token'] ?? ''))) {
@@ -87,6 +95,7 @@ $settings = load_settings($bridgeConfig, array_keys($fieldSchema));
 if (is_array($flash) && isset($flash['values'])) {
     $settings = array_merge($settings, $flash['values']);
 }
+$doorPollStatus = read_door_poll_status($pollStatusFile);
 $statusOutput = array();
 $statusExitCode = 0;
 run_bridge_command($bridgeCtl, 'status', '', $statusOutput, $statusExitCode);
@@ -426,7 +435,8 @@ if ($loxberryUi) {
             <?php foreach ($statusCards as $card): ?>
                 <div class="shb-status">
                     <span class="shb-eyebrow"><?php echo e($card['label']); ?></span>
-                    <span class="shb-badge<?php echo ($card['tone'] ?? '') === 'good' ? ' shb-badge--good' : ''; ?>"><?php echo e(status_card_value($card, $settings)); ?></span>
+                    <?php $cardId = $card['id'] ?? ''; $cardTone = status_card_tone($card, $doorPollStatus); ?>
+                    <span<?php echo $cardId !== '' ? ' id="' . e($cardId) . '"' : ''; ?> class="shb-badge<?php echo $cardTone !== '' ? ' shb-badge--' . e($cardTone) : ''; ?>"><?php echo e(status_card_value($card, $settings, $doorPollStatus)); ?></span>
                 </div>
             <?php endforeach; ?>
         </div>
@@ -537,6 +547,38 @@ if ($loxberryUi) {
             window.history.replaceState({}, '', '?tab=' + encodeURIComponent(target));
         });
     });
+
+    var pollStatus = document.getElementById('door-poll-status');
+    if (pollStatus) {
+        var intervalSeconds = Number(<?php echo json_encode($settings['DOOR_POLL_INTERVAL_SECONDS'] ?? 5); ?>) || 5;
+        var refreshPollStatus = function () {
+            fetch('?action=door-poll-status', {cache: 'no-store'})
+                .then(function (response) { return response.json(); })
+                .then(function (status) {
+                    pollStatus.textContent = formatDoorPollStatus(status);
+                    pollStatus.classList.toggle('shb-badge--good', status.available === true && status.healthy === true);
+                    pollStatus.classList.toggle('shb-badge--bad', status.available === true && status.healthy !== true);
+                })
+                .catch(function () {
+                    pollStatus.textContent = 'Status unavailable';
+                    pollStatus.classList.remove('shb-badge--good');
+                    pollStatus.classList.add('shb-badge--bad');
+                });
+        };
+        window.setInterval(refreshPollStatus, Math.max(1000, intervalSeconds * 1000));
+    }
+
+    function formatDoorPollStatus(status) {
+        if (status.available !== true) return 'Awaiting first poll';
+        var details = [String(status.position || 'unknown')];
+        if (status.connected === true) details.push('online');
+        if (status.connected === false) details.push('offline');
+        if (status.battery_level !== null && status.battery_level !== undefined) details.push('battery ' + status.battery_level + '%');
+        if (status.light_level !== null && status.light_level !== undefined) details.push('light ' + status.light_level + '%');
+        if (status.fault && status.fault !== 'none') details.push('fault ' + status.fault);
+        if (status.updated_at) details.push('updated ' + new Date(status.updated_at).toLocaleTimeString());
+        return details.join(' · ');
+    }
 }());
 </script>
 <?php
@@ -546,9 +588,65 @@ if ($loxberryUi) {
     echo '</body></html>';
 }
 
-function status_card_value($card, $settings) {
+function read_door_poll_status($path) {
+    if (!is_file($path)) {
+        return array('available' => false, 'healthy' => false);
+    }
+    $values = json_decode((string) file_get_contents($path), true);
+    if (!is_array($values) || !isset($values['position'])) {
+        return array('available' => false, 'healthy' => false);
+    }
+    $fault = $values['fault'] ?? null;
+    $values['available'] = true;
+    $values['healthy'] = ($values['connected'] ?? true) !== false
+        && ($fault === null || $fault === '' || $fault === 'none');
+    return $values;
+}
+
+function format_door_poll_status($status) {
+    if (($status['available'] ?? false) !== true) {
+        return 'Awaiting first poll';
+    }
+    $details = array((string) ($status['position'] ?? 'unknown'));
+    if (($status['connected'] ?? null) === true) {
+        $details[] = 'online';
+    } elseif (($status['connected'] ?? null) === false) {
+        $details[] = 'offline';
+    }
+    if (isset($status['battery_level'])) {
+        $details[] = 'battery ' . (int) $status['battery_level'] . '%';
+    }
+    if (isset($status['light_level'])) {
+        $details[] = 'light ' . (int) $status['light_level'] . '%';
+    }
+    if (($status['fault'] ?? '') !== '' && ($status['fault'] ?? '') !== 'none') {
+        $details[] = 'fault ' . $status['fault'];
+    }
+    if (isset($status['updated_at']) && strtotime((string) $status['updated_at']) !== false) {
+        $details[] = 'updated ' . date('H:i:s', strtotime((string) $status['updated_at']));
+    }
+    return implode(' · ', $details);
+}
+
+function status_card_tone($card, $doorPollStatus) {
+    if (($card['kind'] ?? '') === 'door-poll-status') {
+        if (($doorPollStatus['available'] ?? false) !== true) {
+            return '';
+        }
+        return ($doorPollStatus['healthy'] ?? false) === true ? 'good' : 'bad';
+    }
+    return ($card['tone'] ?? '') === 'good' ? 'good' : '';
+}
+
+function status_card_value($card, $settings, $doorPollStatus) {
+    if (($card['kind'] ?? '') === 'door-poll-status') {
+        return format_door_poll_status($doorPollStatus);
+    }
     if (isset($card['setting'])) {
         $value = $settings[$card['setting']] ?? '';
+        if (($card['kind'] ?? '') === 'poll-interval') {
+            return 'Every ' . ($value !== '' ? $value : '5') . ' seconds';
+        }
         if (($card['kind'] ?? '') === 'toggle') {
             return $value === 'true' ? 'Enabled' : 'Disabled';
         }
