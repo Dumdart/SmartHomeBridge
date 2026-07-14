@@ -99,7 +99,20 @@ def download_datasets_main() -> None:
         action="store_true",
         help="Print full tracebacks for source failures as they occur",
     )
+    parser.add_argument(
+        "--yolo-zip",
+        action="append",
+        default=[],
+        metavar="SOURCE=PATH",
+        help="Use a local Roboflow YOLOv8 zip for a source instead of its API",
+    )
     args = parser.parse_args()
+    local_yolo_archives = {}
+    for value in args.yolo_zip:
+        source_name, separator, archive_path = value.partition("=")
+        if not separator or not source_name or not archive_path:
+            parser.error("--yolo-zip must use SOURCE=PATH")
+        local_yolo_archives[source_name] = Path(archive_path)
     print(
         download_datasets(
             workspace=args.workspace,
@@ -108,6 +121,7 @@ def download_datasets_main() -> None:
             refresh_sources=args.refresh,
             refresh_all=args.refresh_all,
             verbose=args.verbose,
+            local_yolo_archives=local_yolo_archives,
         )
     )
 

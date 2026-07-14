@@ -11,7 +11,16 @@ $env:ROBOFLOW_API_KEY = "..."
 uv run --extra ml smart-home-ml-download-datasets
 ```
 
-The downloader reports each source's start, cache/refresh decision, provider phase, per-split or per-candidate progress, record count, duration, and any failure immediately. It stores source images and YOLO labels below `work/raw/`, remote metadata below `work/cache/`, source provenance below `work/manifests/`, and writes `work/source_metadata.csv` plus `work/download_report.json`. Re-run it to resume complete sources; use repeatable `--source NAME`, `--refresh NAME`, or `--refresh-all` to control acquisition. Add `--verbose` to print a full traceback as soon as a source fails. The UNSW Predators entry is reported as skipped because its public metadata does not contain usable object boxes.
+The downloader reports each source's start, cache/refresh decision, provider phase, selected-download progress, record count, duration, and any failure immediately. It stores source images and YOLO labels below `work/raw/`, remote metadata below `work/cache/`, source provenance below `work/manifests/`, and writes `work/source_metadata.csv` plus `work/download_report.json`. Re-run it to resume complete sources; use repeatable `--source NAME`, `--refresh NAME`, or `--refresh-all` to control acquisition. Add `--verbose` to print a full traceback as soon as a source fails. Open Images reuses split metadata between class shards, and LILA downloads selected candidates concurrently. The optional Chicken Barn Roboflow source produces a warning rather than discarding successful sources when no generated version exists. The UNSW Predators entry is reported as skipped because its public metadata does not contain usable object boxes.
+
+To use a manually downloaded Roboflow YOLOv8 export instead of its API, pass the configured source name and zip path. The importer safely extracts the archive, remaps its source class IDs, writes the normalized raw data and manifest, and then removes the temporary extraction. A subset import retains records from all other complete source manifests when regenerating `source_metadata.csv`:
+
+```powershell
+uv run --extra ml smart-home-ml-download-datasets `
+  --source chicken_barn_roboflow `
+  --yolo-zip "chicken_barn_roboflow=C:\datasets\chicken-barn-yolov8.zip" `
+  --verbose
+```
 
 Inspect `download_report.json`, then build the validated training archive explicitly:
 

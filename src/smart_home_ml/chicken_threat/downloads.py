@@ -8,8 +8,10 @@ import re
 import shutil
 import time
 import traceback
+import warnings
 import zipfile
 from collections import Counter, defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Mapping
@@ -60,6 +62,15 @@ class DownloadRecord:
         }
 
 
+@dataclass(frozen=True)
+class LilaCandidate:
+    image: Mapping[str, Any]
+    annotations: tuple[tuple[str, Mapping[str, Any]], ...]
+    file_name: str
+    capture_group: str
+    split: str
+
+
 def default_download_config_path() -> Path:
     return Path(__file__).resolve().parents[3] / "ml/chicken_threat/configs/download_sources.yaml"
 
@@ -71,6 +82,7 @@ def download_datasets(
     refresh_sources: Iterable[str] = (),
     refresh_all: bool = False,
     verbose: bool = False,
+    local_yolo_archives: Mapping[str, Path] | None = None,
 ) -> Path:
     workspace = workspace.resolve()
     config_path = (config_path or default_download_config_path()).resolve()
@@ -86,7 +98,10 @@ def download_datasets(
         refresh_names.update(selected_names)
     if refresh_names - set(selected_names):
         raise DatasetDownloadError("--refresh sources must also be selected with --source")
-    _validate_roboflow_credentials(selected_names, sources)
+    local_yolo_archives = {
+        name: path.expanduser().resolve() for name, path in (local_yolo_archives or {}).items()
+    }
+    _validate_local_yolo_archives(local_yolo_archives, selected_names, sources)
 
     for directory in (workspace / "raw", workspace / "cache", workspace / "manifests"):
         directory.mkdir(parents=True, exist_ok=True)
@@ -95,6 +110,7 @@ def download_datasets(
     records: list[DownloadRecord] = []
     reports: list[dict[str, Any]] = []
     errors: list[str] = []
+    warnings: list[str] = []
     for index, name in enumerate(selected_names, start=1):
         source = sources[name]
         started = time.perf_counter()
@@ -106,6 +122,7 @@ def download_datasets(
                 workspace=workspace,
                 seed=int(config["seed"]),
                 refresh=name in refresh_names,
+                local_yolo_archive=local_yolo_archives.get(name),
             )
             records.extend(source_records)
             report["duration_seconds"] = round(time.perf_counter() - started, 2)
@@ -115,18 +132,39 @@ def download_datasets(
                 f"({len(source_records)} records, {report['duration_seconds']:.2f}s)"
             )
         except Exception as exc:
-            errors.append(f"{name}: {exc}")
+            required = bool(source.get("required", True) or name in local_yolo_archives)
+            message = f"{name}: {exc}"
+            (errors if required else warnings).append(message)
             failure = {
                 "name": name,
                 "status": "failed",
+                "required": required,
                 "error": str(exc),
                 "traceback": traceback.format_exc(),
                 "duration_seconds": round(time.perf_counter() - started, 2),
             }
             reports.append(failure)
-            print(f"[{index}/{len(selected_names)}] {name}: FAILED after {failure['duration_seconds']:.2f}s: {exc}")
+            qualifier = "FAILED" if required else "OPTIONAL FAILURE"
+            print(
+                f"[{index}/{len(selected_names)}] {name}: {qualifier} after "
+                f"{failure['duration_seconds']:.2f}s: {exc}"
+            )
             if verbose:
                 print(failure["traceback"].rstrip())
+
+    retained_manifest_sources: dict[str, int] = {}
+    for name, source in sources.items():
+        if name in selected_names or not source.get("enabled", True):
+            continue
+        retained = _load_complete_manifest(workspace / "manifests" / f"{name}.json", workspace)
+        if retained:
+            records.extend(retained)
+            retained_manifest_sources[name] = len(retained)
+    if retained_manifest_sources:
+        summary = ", ".join(
+            f"{name}={count}" for name, count in sorted(retained_manifest_sources.items())
+        )
+        print(f"Retaining completed unselected source manifests: {summary}")
 
     report_path = workspace / "download_report.json"
     report_path.write_text(
@@ -136,9 +174,11 @@ def download_datasets(
                 "selected_sources": list(selected_names),
                 "refresh_sources": sorted(refresh_names),
                 "source_definitions": {name: sources[name] for name in selected_names},
+                "retained_manifest_sources": retained_manifest_sources,
                 "sources": reports,
                 "record_count": len(records),
                 "errors": errors,
+                "warnings": warnings,
             },
             indent=2,
             sort_keys=True,
@@ -161,6 +201,8 @@ def download_datasets(
     report["duplicate_images_skipped"] = duplicates
     report_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(f"Download metadata written: {metadata_path} ({written} records, {duplicates} duplicates skipped)")
+    if warnings:
+        print(f"Completed with {len(warnings)} optional source warning(s); see {report_path}")
     return metadata_path
 
 
@@ -181,13 +223,19 @@ def _validate_source_names(names: Iterable[str], sources: Mapping[str, Any], opt
         raise DatasetDownloadError(f"{option} names are unknown: {', '.join(unknown)}")
 
 
-def _validate_roboflow_credentials(names: Iterable[str], sources: Mapping[str, Any]) -> None:
-    import os
-
-    if any(sources[name].get("type") == "roboflow_yolo" for name in names) and not os.getenv(
-        "ROBOFLOW_API_KEY"
-    ):
-        raise DatasetDownloadError("Set ROBOFLOW_API_KEY before downloading Roboflow sources")
+def _validate_local_yolo_archives(
+    archives: Mapping[str, Path], selected_names: Iterable[str], sources: Mapping[str, Any]
+) -> None:
+    _validate_source_names(archives, sources, "--yolo-zip")
+    unselected = sorted(set(archives) - set(selected_names))
+    if unselected:
+        raise DatasetDownloadError("--yolo-zip sources must also be selected: " + ", ".join(unselected))
+    invalid = sorted(name for name in archives if sources[name].get("type") != "roboflow_yolo")
+    if invalid:
+        raise DatasetDownloadError("--yolo-zip only supports Roboflow YOLO sources: " + ", ".join(invalid))
+    missing = sorted(name for name, path in archives.items() if not path.is_file())
+    if missing:
+        raise DatasetDownloadError("--yolo-zip files do not exist for: " + ", ".join(missing))
 
 
 def _download_source(
@@ -196,6 +244,7 @@ def _download_source(
     workspace: Path,
     seed: int,
     refresh: bool,
+    local_yolo_archive: Path | None = None,
 ) -> tuple[list[DownloadRecord], dict[str, Any]]:
     manifest_path = workspace / "manifests" / f"{name}.json"
     if not refresh:
@@ -219,7 +268,11 @@ def _download_source(
         }
         _write_manifest(manifest_path, workspace, [], report)
         return [], report
-    if source_type == "roboflow_yolo":
+    if local_yolo_archive is not None:
+        records, details = _import_local_yolo_zip(
+            name, source, workspace, source_root, local_yolo_archive
+        )
+    elif source_type == "roboflow_yolo":
         records, details = _download_roboflow_yolo(name, source, workspace, source_root)
     elif source_type == "open_images":
         records, details = _download_open_images(name, source, workspace, source_root, seed)
@@ -267,6 +320,46 @@ def _record_from_dict(value: Mapping[str, Any], workspace: Path) -> DownloadReco
     )
 
 
+def _import_local_yolo_zip(
+    name: str,
+    source: Mapping[str, Any],
+    workspace: Path,
+    output_root: Path,
+    archive_path: Path,
+) -> tuple[list[DownloadRecord], dict[str, Any]]:
+    extract_root = workspace / "cache" / "manual_yolo" / name
+    shutil.rmtree(extract_root, ignore_errors=True)
+    extract_root.mkdir(parents=True)
+    print(f"  Local YOLO: extracting {archive_path}")
+    try:
+        with zipfile.ZipFile(archive_path) as archive:
+            _safe_extract_zip(archive, extract_root)
+        source_root = _find_yolo_root(extract_root)
+        print(f"  Local YOLO: normalizing export at {source_root}")
+        records = _copy_yolo_source(
+            source_root=source_root,
+            output_root=output_root,
+            source_name=name,
+            class_map=source.get("class_map", {}),
+            keep_empty_images=bool(source.get("keep_empty_images", False)),
+        )
+    finally:
+        shutil.rmtree(extract_root, ignore_errors=True)
+    return records, {
+        "provider": "manual_yolov8_zip",
+        "archive": archive_path.as_posix(),
+    }
+
+
+def _safe_extract_zip(archive: zipfile.ZipFile, destination: Path) -> None:
+    destination = destination.resolve()
+    for member in archive.infolist():
+        target = (destination / member.filename).resolve()
+        if target != destination and destination not in target.parents:
+            raise DatasetDownloadError(f"ZIP member escapes the extraction directory: {member.filename}")
+    archive.extractall(destination)
+
+
 def _download_roboflow_yolo(
     name: str, source: Mapping[str, Any], workspace: Path, output_root: Path
 ) -> tuple[list[DownloadRecord], dict[str, Any]]:
@@ -275,6 +368,11 @@ def _download_roboflow_yolo(
     except ImportError as exc:
         raise DatasetDownloadError("Install the ml extra to download Roboflow sources") from exc
     import os
+
+    if not os.getenv("ROBOFLOW_API_KEY"):
+        raise DatasetDownloadError(
+            f"Set ROBOFLOW_API_KEY or provide --yolo-zip {name}=PATH_TO_EXPORT.zip"
+        )
 
     download_root = workspace / "cache" / "roboflow" / name
     shutil.rmtree(download_root, ignore_errors=True)
@@ -310,12 +408,10 @@ def _download_roboflow_yolo(
 def _resolve_roboflow_version(project: Any, configured_version: Any) -> tuple[int, Any]:
     if configured_version is not None:
         return int(configured_version), project.version(int(configured_version))
-    for number in range(100, 0, -1):
-        try:
-            return number, project.version(number)
-        except RuntimeError as exc:
-            if "not found" not in str(exc).lower():
-                raise
+    versions = project.versions()
+    if versions:
+        version = max(versions, key=lambda item: int(item.version))
+        return int(version.version), version
     raise DatasetDownloadError("No generated Roboflow dataset version was found")
 
 
@@ -398,12 +494,20 @@ def _download_open_images(
     seed: int,
 ) -> tuple[list[DownloadRecord], dict[str, Any]]:
     try:
-        import fiftyone.zoo as foz
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=SyntaxWarning, message=".*invalid escape sequence.*")
+            import fiftyone as fo
+            import fiftyone.zoo as foz
     except ImportError as exc:
         raise DatasetDownloadError("Install the ml extra to download Open Images sources") from exc
+    zoo_root = workspace / "cache" / "fiftyone"
+    zoo_root.mkdir(parents=True, exist_ok=True)
+    fo.config.dataset_zoo_dir = str(zoo_root)
     split_map = {"train": "train", "valid": "validation", "test": "test"}
     records: list[DownloadRecord] = []
     seen_filepaths: set[Path] = set()
+    record_counts: dict[str, dict[str, int]] = {split: {} for split in VALID_SPLITS}
+    workers = max(1, min(32, int(source.get("download_workers", 8))))
     for split, open_images_split in split_map.items():
         targets = source["target_images"].get(split, {})
         for source_class, max_samples in targets.items():
@@ -421,43 +525,68 @@ def _download_open_images(
                 seed=seed,
                 only_matching=True,
                 dataset_name=f"chicken-threat-{split}-{_slugify(source_class)}",
-                overwrite=True,
+                num_workers=workers,
+                drop_existing_dataset=True,
+                overwrite=False,
             )
-            detection_field = _fiftyone_detection_field(dataset)
-            for sample in _progress(dataset, f"open_images:{split}:{source_class}", "image"):
-                image_path = Path(sample.filepath).resolve()
-                if image_path in seen_filepaths:
-                    continue
-                detections = getattr(sample[detection_field], "detections", []) if sample[detection_field] else []
-                output_lines = []
-                for detection in detections:
-                    if detection.label != source_class:
+            class_record_count = 0
+            try:
+                detection_field = _fiftyone_detection_field(dataset)
+                for sample in _progress(dataset, f"open_images:{split}:{source_class}", "image"):
+                    image_path = Path(sample.filepath).resolve()
+                    if image_path in seen_filepaths:
                         continue
-                    box = _fiftyone_box_to_yolo(detection.bounding_box)
-                    if box is not None:
-                        output_lines.append(_format_yolo_line(TRAINING_CLASS_NAMES.index(canonical), box))
-                if not output_lines:
-                    continue
-                seen_filepaths.add(image_path)
-                sample_id = str(sample.id)
-                stem = _slugify(f"{source_class}_{sample_id}")
-                destination_image = output_root / split / "images" / f"{stem}{image_path.suffix.lower()}"
-                destination_label = output_root / split / "labels" / f"{stem}.txt"
-                destination_image.parent.mkdir(parents=True, exist_ok=True)
-                destination_label.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(image_path, destination_image)
-                destination_label.write_text("\n".join(output_lines) + "\n", encoding="utf-8")
-                records.append(
-                    DownloadRecord(
-                        destination_image,
-                        destination_label,
-                        name,
-                        f"{name}:{sample_id}",
-                        "unknown",
-                        split,
+                    detections = (
+                        getattr(sample[detection_field], "detections", [])
+                        if sample[detection_field]
+                        else []
                     )
-                )
-    return records, {"provider": "fiftyone", "dataset": "open-images-v7"}
+                    output_lines = []
+                    for detection in detections:
+                        if detection.label != source_class:
+                            continue
+                        box = _fiftyone_box_to_yolo(detection.bounding_box)
+                        if box is not None:
+                            output_lines.append(
+                                _format_yolo_line(TRAINING_CLASS_NAMES.index(canonical), box)
+                            )
+                    if not output_lines:
+                        continue
+                    seen_filepaths.add(image_path)
+                    sample_id = str(sample.id)
+                    stem = _slugify(f"{source_class}_{sample_id}")
+                    destination_image = (
+                        output_root / split / "images" / f"{stem}{image_path.suffix.lower()}"
+                    )
+                    destination_label = output_root / split / "labels" / f"{stem}.txt"
+                    destination_image.parent.mkdir(parents=True, exist_ok=True)
+                    destination_label.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(image_path, destination_image)
+                    destination_label.write_text("\n".join(output_lines) + "\n", encoding="utf-8")
+                    records.append(
+                        DownloadRecord(
+                            destination_image,
+                            destination_label,
+                            name,
+                            f"{name}:{sample_id}",
+                            "unknown",
+                            split,
+                        )
+                    )
+                    class_record_count += 1
+            finally:
+                dataset.delete()
+            record_counts[split][source_class] = class_record_count
+            print(
+                f"  Open Images: {split}/{source_class} wrote {class_record_count} records; "
+                "shared metadata retained for the next class"
+            )
+    return records, {
+        "provider": "fiftyone",
+        "dataset": "open-images-v7",
+        "zoo_cache": zoo_root.as_posix(),
+        "records_by_split_class": record_counts,
+    }
 
 
 def _fiftyone_detection_field(dataset: Any) -> str:
@@ -500,11 +629,56 @@ def _download_lila_coco(
 
     candidates = sorted(annotations_by_image.items())
     random.Random(seed).shuffle(candidates)
-    print(f"  LILA: {len(candidates)} images have mapped boxed annotations")
+    selected, planned_counts = _select_lila_candidates(name, source, candidates, images)
+    workers = max(1, min(32, int(source.get("download_workers", 8))))
+    print(
+        f"  LILA: selected {len(selected)} of {len(candidates)} boxed candidates; "
+        f"downloading with {workers} workers"
+    )
     counts: dict[str, Counter[str]] = {split: Counter() for split in VALID_SPLITS}
     records: list[DownloadRecord] = []
     skipped_downloads = 0
-    for image_id, annotations in _progress(candidates, f"lila:{name}", "candidate"):
+    invalid_candidates = 0
+
+    def materialize(candidate: LilaCandidate):
+        return _materialize_lila_candidate(name, source, output_root, candidate)
+
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        results = executor.map(materialize, selected)
+        for record, written_counts, download_failed in _progress(
+            results, f"lila:{name}", "image", total=len(selected)
+        ):
+            if download_failed:
+                skipped_downloads += 1
+            elif record is None:
+                invalid_candidates += 1
+            else:
+                counts[record.split].update(written_counts)
+                records.append(record)
+    return records, {
+        "provider": "lila",
+        "metadata_url": metadata_url,
+        "candidate_images": len(candidates),
+        "selected_images": len(selected),
+        "download_workers": workers,
+        "skipped_downloads": skipped_downloads,
+        "invalid_candidates": invalid_candidates,
+        "planned_objects_by_split": {
+            split: dict(counter) for split, counter in planned_counts.items()
+        },
+        "objects_by_split": {split: dict(counter) for split, counter in counts.items()},
+    }
+
+
+def _select_lila_candidates(
+    name: str,
+    source: Mapping[str, Any],
+    candidates: list[tuple[str, list[tuple[str, Mapping[str, Any]]]]],
+    images: Mapping[str, Mapping[str, Any]],
+) -> tuple[list[LilaCandidate], dict[str, Counter[str]]]:
+    planned_counts: dict[str, Counter[str]] = {split: Counter() for split in VALID_SPLITS}
+    selected: list[LilaCandidate] = []
+    for image_id, annotations in candidates:
         image = images.get(image_id)
         if image is None:
             continue
@@ -513,53 +687,64 @@ def _download_lila_coco(
         split = _stable_split(capture_group)
         caps = source.get("object_caps", {}).get(split, {})
         image_counts = Counter(canonical for canonical, _ in annotations)
-        if not any(counts[split][canonical] < int(caps.get(canonical, 0)) for canonical in image_counts):
+        if not any(
+            planned_counts[split][canonical] < int(caps.get(canonical, 0))
+            for canonical in image_counts
+        ):
             continue
-        suffix = Path(file_name).suffix.lower()
-        suffix = suffix if suffix in IMAGE_SUFFIXES else ".jpg"
-        stem = _slugify(f"{name}_{Path(file_name).with_suffix('').as_posix()}")
-        destination_image = output_root / split / "images" / f"{stem}{suffix}"
-        destination_label = output_root / split / "labels" / f"{stem}.txt"
-        image_url = str(source["image_base_url"]).rstrip("/") + "/" + quote(file_name.lstrip("/"), safe="/()_.-~")
-        try:
-            _download_file(image_url, destination_image)
-            with Image.open(destination_image) as loaded:
-                width, height = loaded.size
-        except Exception:
-            destination_image.unlink(missing_ok=True)
-            skipped_downloads += 1
-            continue
-        output_lines = []
-        written_counts: Counter[str] = Counter()
-        for canonical, annotation in annotations:
-            box = _coco_box_to_yolo(annotation["bbox"], width, height)
-            if box is None:
-                continue
-            output_lines.append(_format_yolo_line(TRAINING_CLASS_NAMES.index(canonical), box))
-            written_counts[canonical] += 1
-        if not output_lines:
-            destination_image.unlink(missing_ok=True)
-            continue
-        destination_label.parent.mkdir(parents=True, exist_ok=True)
-        destination_label.write_text("\n".join(output_lines) + "\n", encoding="utf-8")
-        counts[split].update(written_counts)
-        records.append(
-            DownloadRecord(
-                destination_image,
-                destination_label,
-                name,
-                capture_group,
-                "night" if _is_night(image) else "day",
-                split,
-                _captured_at(image),
-            )
+        selected.append(
+            LilaCandidate(image, tuple(annotations), file_name, capture_group, split)
         )
-    return records, {
-        "provider": "lila",
-        "metadata_url": metadata_url,
-        "skipped_downloads": skipped_downloads,
-        "objects_by_split": {split: dict(counter) for split, counter in counts.items()},
-    }
+        planned_counts[split].update(image_counts)
+    return selected, planned_counts
+
+
+def _materialize_lila_candidate(
+    name: str,
+    source: Mapping[str, Any],
+    output_root: Path,
+    candidate: LilaCandidate,
+) -> tuple[DownloadRecord | None, Counter[str], bool]:
+    suffix = Path(candidate.file_name).suffix.lower()
+    suffix = suffix if suffix in IMAGE_SUFFIXES else ".jpg"
+    stem = _slugify(f"{name}_{Path(candidate.file_name).with_suffix('').as_posix()}")
+    destination_image = output_root / candidate.split / "images" / f"{stem}{suffix}"
+    destination_label = output_root / candidate.split / "labels" / f"{stem}.txt"
+    image_url = str(source["image_base_url"]).rstrip("/") + "/" + quote(
+        candidate.file_name.lstrip("/"), safe="/()_.-~"
+    )
+    try:
+        _download_file(image_url, destination_image)
+        with Image.open(destination_image) as loaded:
+            width, height = loaded.size
+    except Exception:
+        destination_image.unlink(missing_ok=True)
+        return None, Counter(), True
+
+    output_lines = []
+    written_counts: Counter[str] = Counter()
+    for canonical, annotation in candidate.annotations:
+        box = _coco_box_to_yolo(annotation["bbox"], width, height)
+        if box is None:
+            continue
+        output_lines.append(_format_yolo_line(TRAINING_CLASS_NAMES.index(canonical), box))
+        written_counts[canonical] += 1
+    if not output_lines:
+        destination_image.unlink(missing_ok=True)
+        return None, Counter(), False
+
+    destination_label.parent.mkdir(parents=True, exist_ok=True)
+    destination_label.write_text("\n".join(output_lines) + "\n", encoding="utf-8")
+    record = DownloadRecord(
+        destination_image,
+        destination_label,
+        name,
+        candidate.capture_group,
+        "night" if _is_night(candidate.image) else "day",
+        candidate.split,
+        _captured_at(candidate.image),
+    )
+    return record, written_counts, False
 
 
 def _download_file(url: str, destination: Path) -> Path:
@@ -572,25 +757,40 @@ def _download_file(url: str, destination: Path) -> Path:
     destination.parent.mkdir(parents=True, exist_ok=True)
     temporary = destination.with_suffix(destination.suffix + ".part")
     temporary.unlink(missing_ok=True)
-    try:
-        with requests.get(url, stream=True, timeout=60) as response:
-            response.raise_for_status()
-            with temporary.open("wb") as handle:
-                for chunk in response.iter_content(chunk_size=1024 * 1024):
-                    if chunk:
-                        handle.write(chunk)
-        temporary.replace(destination)
-    finally:
-        temporary.unlink(missing_ok=True)
-    return destination
+    for attempt in range(1, 4):
+        try:
+            with requests.get(url, stream=True, timeout=(15, 60)) as response:
+                response.raise_for_status()
+                with temporary.open("wb") as handle:
+                    for chunk in response.iter_content(chunk_size=1024 * 1024):
+                        if chunk:
+                            handle.write(chunk)
+            temporary.replace(destination)
+            return destination
+        except requests.RequestException:
+            temporary.unlink(missing_ok=True)
+            if attempt == 3:
+                raise
+            time.sleep(2 ** (attempt - 1))
+    raise DatasetDownloadError(f"Failed to download {url}")
 
 
-def _progress(items: Iterable[Any], description: str, unit: str) -> Iterable[Any]:
+def _progress(
+    items: Iterable[Any], description: str, unit: str, total: int | None = None
+) -> Iterable[Any]:
     try:
         from tqdm.auto import tqdm
     except ImportError:
         return items
-    return tqdm(items, desc=description, unit=unit, dynamic_ncols=True, mininterval=0.5)
+    return tqdm(
+        items,
+        desc=description,
+        unit=unit,
+        total=total,
+        ascii=True,
+        dynamic_ncols=True,
+        mininterval=0.5,
+    )
 
 
 def _read_json_payload(path: Path) -> dict[str, Any]:
@@ -609,7 +809,11 @@ def _write_source_metadata(
     rows: list[dict[str, str]] = []
     hashes: set[str] = set()
     duplicates = 0
-    for record in sorted(records, key=lambda item: (item.split, item.source, str(item.image_path))):
+    ordered_records = sorted(
+        records, key=lambda item: (item.split, item.source, str(item.image_path))
+    )
+    print(f"Validating and deduplicating {len(ordered_records)} downloaded records")
+    for record in _progress(ordered_records, "metadata:deduplicate", "image"):
         digest = _sha256(record.image_path)
         if digest in hashes:
             duplicates += 1

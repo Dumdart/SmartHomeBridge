@@ -33,6 +33,7 @@ sources:
   chicken_barn_roboflow:
     type: roboflow_yolo
     enabled: true
+    required: false
     workspace: paul-thumfart
     project: chicken-barn-images
     version: null
@@ -59,6 +60,7 @@ sources:
   open_images:
     type: open_images
     enabled: true
+    download_workers: 8
     class_map:
       Fox: fox
       Cat: cat
@@ -77,6 +79,7 @@ sources:
   channel_islands_camera_traps:
     type: lila_coco
     enabled: true
+    download_workers: 8
     metadata_url: https://storage.googleapis.com/public-datasets-lila/channel-islands-camera-traps/channel-islands-camera-traps.json.zip
     image_base_url: https://lilawildlife.blob.core.windows.net/lila-wildlife/channel-islands-camera-traps/images
     class_map: {fox: fox, rodent: rodent, bird: other_bird}
@@ -87,6 +90,7 @@ sources:
   ena24_detection:
     type: lila_coco
     enabled: true
+    download_workers: 8
     metadata_url: https://storage.googleapis.com/public-datasets-lila/ena24/ena24_public.json
     image_base_url: https://lilawildlife.blob.core.windows.net/lila-wildlife/ena24/images
     class_map:
@@ -112,6 +116,7 @@ sources:
   caltech_camera_traps_boxes:
     type: lila_coco
     enabled: true
+    download_workers: 8
     metadata_url: https://storage.googleapis.com/public-datasets-lila/caltechcameratraps/labels/caltech_bboxes_20200316.json
     image_base_url: https://lilawildlife.blob.core.windows.net/lila-wildlife/caltech-unzipped/cct_images
     class_map: {coyote: dog, dog: dog, bobcat: cat, cat: cat, squirrel: rodent, mouse: rodent, rat: rodent, bird: other_bird}

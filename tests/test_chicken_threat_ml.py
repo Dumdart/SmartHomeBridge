@@ -1,6 +1,7 @@
 import csv
 import json
 from pathlib import Path
+from zipfile import ZipFile
 
 import pytest
 import yaml
@@ -91,7 +92,15 @@ def test_local_dataset_command_uses_the_ignored_workspace(monkeypatch, tmp_path,
 def test_download_command_uses_default_workspace_and_forwards_controls(monkeypatch, capsys):
     captured = {}
 
-    def fake_download(workspace, config_path, source_names, refresh_sources, refresh_all, verbose):
+    def fake_download(
+        workspace,
+        config_path,
+        source_names,
+        refresh_sources,
+        refresh_all,
+        verbose,
+        local_yolo_archives,
+    ):
         captured.update(
             workspace=workspace,
             config_path=config_path,
@@ -99,6 +108,7 @@ def test_download_command_uses_default_workspace_and_forwards_controls(monkeypat
             refresh_sources=refresh_sources,
             refresh_all=refresh_all,
             verbose=verbose,
+            local_yolo_archives=local_yolo_archives,
         )
         return Path("metadata.csv")
 
@@ -123,11 +133,12 @@ def test_download_command_uses_default_workspace_and_forwards_controls(monkeypat
         "refresh_sources": ["open_images"],
         "refresh_all": False,
         "verbose": False,
+        "local_yolo_archives": {},
     }
     assert capsys.readouterr().out.strip() == "metadata.csv"
 
 
-def test_download_requires_roboflow_key_before_creating_workspace(tmp_path, monkeypatch):
+def test_download_requires_roboflow_key_when_remote_acquisition_is_needed(tmp_path, monkeypatch):
     config_path = _write_download_config(
         tmp_path,
         {"poultry": {"type": "roboflow_yolo", "enabled": True}},
@@ -137,7 +148,10 @@ def test_download_requires_roboflow_key_before_creating_workspace(tmp_path, monk
     with pytest.raises(downloads.DatasetDownloadError, match="ROBOFLOW_API_KEY"):
         downloads.download_datasets(tmp_path / "work", config_path)
 
-    assert not (tmp_path / "work").exists()
+    report = json.loads((tmp_path / "work" / "download_report.json").read_text())
+    assert report["errors"] == [
+        "poultry: Set ROBOFLOW_API_KEY or provide --yolo-zip poultry=PATH_TO_EXPORT.zip"
+    ]
 
 
 def test_download_filters_refreshes_and_resumes_records(tmp_path, monkeypatch):
@@ -150,7 +164,7 @@ def test_download_filters_refreshes_and_resumes_records(tmp_path, monkeypatch):
     )
     calls = []
 
-    def fake_download_source(name, source, workspace, seed, refresh):
+    def fake_download_source(name, source, workspace, seed, refresh, local_yolo_archive):
         calls.append((name, refresh))
         records = []
         for index, split in enumerate(("train", "valid", "test")):
@@ -226,6 +240,117 @@ def test_source_adapter_reuses_complete_manifest(tmp_path):
     assert report == {"name": "fixture", "status": "cached", "records": 1}
 
 
+def test_manual_yolo_zip_is_normalized_with_configured_class_mapping(tmp_path):
+    source_root = tmp_path / "source"
+    image = source_root / "train" / "images" / "fox.jpg"
+    label = source_root / "train" / "labels" / "fox.txt"
+    image.parent.mkdir(parents=True)
+    label.parent.mkdir(parents=True)
+    Image.new("RGB", (12, 12), (20, 20, 20)).save(image)
+    label.write_text("0 0.5 0.5 0.2 0.2\n")
+    (source_root / "data.yaml").write_text("names: [Fox]\n")
+    archive_path = tmp_path / "export.zip"
+    with ZipFile(archive_path, "w") as archive:
+        for path in source_root.rglob("*"):
+            if path.is_file():
+                archive.write(path, path.relative_to(source_root))
+
+    workspace = tmp_path / "work"
+    records, report = downloads._import_local_yolo_zip(
+        "fixture",
+        {"class_map": {"Fox": "fox"}},
+        workspace,
+        workspace / "raw" / "fixture",
+        archive_path,
+    )
+
+    assert len(records) == 1
+    assert records[0].label_path.read_text().startswith("3 ")
+    assert report["provider"] == "manual_yolov8_zip"
+    assert not (workspace / "cache" / "manual_yolo" / "fixture").exists()
+
+
+def test_optional_source_failure_still_writes_combined_metadata(tmp_path, monkeypatch):
+    config_path = _write_download_config(
+        tmp_path,
+        {
+            "optional": {"type": "fixture", "enabled": True, "required": False},
+            "healthy": {"type": "fixture", "enabled": True},
+        },
+    )
+
+    def fake_download_source(name, source, workspace, seed, refresh, local_yolo_archive):
+        if name == "optional":
+            raise RuntimeError("not published")
+        image = workspace / "raw" / name / "train" / "images" / "image.jpg"
+        label = workspace / "raw" / name / "train" / "labels" / "image.txt"
+        image.parent.mkdir(parents=True)
+        label.parent.mkdir(parents=True)
+        Image.new("RGB", (12, 12), (20, 20, 20)).save(image)
+        label.write_text("0 0.5 0.5 0.2 0.2\n")
+        return (
+            [downloads.DownloadRecord(image, label, name, f"{name}:one", "day", "train")],
+            {"name": name, "status": "downloaded", "records": 1},
+        )
+
+    monkeypatch.setattr(downloads, "_download_source", fake_download_source)
+
+    metadata_path = downloads.download_datasets(tmp_path / "work", config_path)
+
+    assert metadata_path.is_file()
+    report = json.loads((tmp_path / "work" / "download_report.json").read_text())
+    assert report["errors"] == []
+    assert report["warnings"] == ["optional: not published"]
+
+
+def test_subset_download_retains_other_complete_source_manifests(tmp_path, monkeypatch):
+    config_path = _write_download_config(
+        tmp_path,
+        {
+            "manual": {"type": "fixture", "enabled": True},
+            "existing": {"type": "fixture", "enabled": True},
+        },
+    )
+    workspace = tmp_path / "work"
+    existing_image = workspace / "raw" / "existing" / "train" / "images" / "old.jpg"
+    existing_label = workspace / "raw" / "existing" / "train" / "labels" / "old.txt"
+    existing_image.parent.mkdir(parents=True)
+    existing_label.parent.mkdir(parents=True)
+    Image.new("RGB", (12, 12), (20, 20, 20)).save(existing_image)
+    existing_label.write_text("0 0.5 0.5 0.2 0.2\n")
+    existing_record = downloads.DownloadRecord(
+        existing_image, existing_label, "existing", "existing:one", "day", "train"
+    )
+    manifest_path = workspace / "manifests" / "existing.json"
+    manifest_path.parent.mkdir(parents=True)
+    downloads._write_manifest(
+        manifest_path, workspace, [existing_record], {"name": "existing", "status": "downloaded"}
+    )
+
+    def fake_download_source(name, source, workspace, seed, refresh, local_yolo_archive):
+        image = workspace / "raw" / name / "train" / "images" / "new.jpg"
+        label = workspace / "raw" / name / "train" / "labels" / "new.txt"
+        image.parent.mkdir(parents=True)
+        label.parent.mkdir(parents=True)
+        Image.new("RGB", (12, 12), (180, 20, 20)).save(image)
+        label.write_text("0 0.5 0.5 0.2 0.2\n")
+        return (
+            [downloads.DownloadRecord(image, label, name, f"{name}:one", "day", "train")],
+            {"name": name, "status": "downloaded", "records": 1},
+        )
+
+    monkeypatch.setattr(downloads, "_download_source", fake_download_source)
+
+    metadata_path = downloads.download_datasets(
+        workspace, config_path, source_names=["manual"]
+    )
+
+    rows = list(csv.DictReader(metadata_path.open()))
+    assert {row["source"] for row in rows} == {"manual", "existing"}
+    report = json.loads((workspace / "download_report.json").read_text())
+    assert report["retained_manifest_sources"] == {"existing": 1}
+
+
 def test_yolo_adapter_converts_polygons_and_preserves_source_split(tmp_path):
     source_root = tmp_path / "source"
     image_path = source_root / "valid" / "images" / "sample.jpg"
@@ -284,6 +409,25 @@ def test_lila_adapter_writes_boxes_and_keeps_capture_groups_in_one_split(tmp_pat
     assert records[0].lighting == "night"
     assert records[0].label_path.read_text().strip() == "3 0.350000 0.400000 0.500000 0.400000"
     assert records[0].split == downloads._stable_split(records[0].capture_group)
+
+
+def test_lila_selection_progress_only_contains_capped_downloads():
+    images = {
+        str(index): {"id": index, "file_name": f"fox-{index}.jpg"}
+        for index in range(100)
+    }
+    candidates = [
+        (str(index), [("fox", {"bbox": [0, 0, 1, 1]})])
+        for index in range(100)
+    ]
+    caps = {split: {"fox": 2} for split in ("train", "valid", "test")}
+
+    selected, planned = downloads._select_lila_candidates(
+        "fixture", {"object_caps": caps}, candidates, images
+    )
+
+    assert len(selected) <= 6
+    assert all(count <= 2 for counter in planned.values() for count in counter.values())
 
 
 def test_dataset_validation_rejects_malformed_yolo_label(tmp_path):
