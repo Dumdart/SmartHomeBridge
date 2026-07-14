@@ -363,16 +363,17 @@ def _safe_extract_zip(archive: zipfile.ZipFile, destination: Path) -> None:
 def _download_roboflow_yolo(
     name: str, source: Mapping[str, Any], workspace: Path, output_root: Path
 ) -> tuple[list[DownloadRecord], dict[str, Any]]:
-    try:
-        from roboflow import Roboflow
-    except ImportError as exc:
-        raise DatasetDownloadError("Install the ml extra to download Roboflow sources") from exc
     import os
 
     if not os.getenv("ROBOFLOW_API_KEY"):
         raise DatasetDownloadError(
             f"Set ROBOFLOW_API_KEY or provide --yolo-zip {name}=PATH_TO_EXPORT.zip"
         )
+
+    try:
+        from roboflow import Roboflow
+    except ImportError as exc:
+        raise DatasetDownloadError("Install the ml extra to download Roboflow sources") from exc
 
     download_root = workspace / "cache" / "roboflow" / name
     shutil.rmtree(download_root, ignore_errors=True)
