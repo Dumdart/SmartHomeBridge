@@ -3387,6 +3387,8 @@ dependencies = [
     { name = "paho-mqtt" },
     { name = "python-dotenv" },
     { name = "smartcoop-python-sdk" },
+    { name = "starlette" },
+    { name = "uvicorn" },
 ]
 
 [package.optional-dependencies]
@@ -3395,7 +3397,6 @@ dev = [
     { name = "pillow" },
     { name = "pytest" },
     { name = "pyyaml" },
-    { name = "starlette" },
 ]
 gui = [
     { name = "pillow" },
@@ -3404,9 +3405,7 @@ gui = [
 inference = [
     { name = "pillow" },
     { name = "pyyaml" },
-    { name = "starlette" },
     { name = "ultralytics" },
-    { name = "uvicorn" },
 ]
 ml = [
     { name = "fiftyone" },
@@ -3443,12 +3442,11 @@ requires-dist = [
     { name = "requests", marker = "extra == 'ml'", specifier = ">=2.32.0" },
     { name = "roboflow", marker = "extra == 'ml'", specifier = ">=1.1.58" },
     { name = "smartcoop-python-sdk" },
-    { name = "starlette", marker = "extra == 'dev'" },
-    { name = "starlette", marker = "extra == 'inference'" },
+    { name = "starlette" },
     { name = "tqdm", marker = "extra == 'ml'", specifier = ">=4.67.0" },
     { name = "ultralytics", marker = "extra == 'inference'" },
     { name = "ultralytics", marker = "extra == 'ml'", specifier = "==8.3.185" },
-    { name = "uvicorn", marker = "extra == 'inference'" },
+    { name = "uvicorn" },
 ]
 provides-extras = ["dev", "gui", "inference", "ml"]
 

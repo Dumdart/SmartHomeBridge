@@ -110,6 +110,9 @@ def test_omlet_plugin_contains_only_door_configuration(tmp_path):
         "config/smart-home-bridge.ini"
     ]
     assert "DOOR_API_KEY=" in text["config/smart-home-bridge.ini"]
+    assert "OMLET_WEBHOOK_ENABLED=true" in text["config/smart-home-bridge.ini"]
+    assert "OMLET_WEBHOOK_TOKEN=" in text["config/smart-home-bridge.ini"]
+    assert "HTTP_PORT=8080" in text["config/smart-home-bridge.ini"]
     assert "CAMERA_HOST=" not in text["config/smart-home-bridge.ini"]
     assert "open_door" in text["webfrontend/htmlauth/plugin.php"]
     assert 'PLUGIN_FOLDER="${PLUGIN_FOLDER:-omletchickendoor}"' in text[
@@ -213,6 +216,9 @@ def test_plugin_profiles_define_human_friendly_field_schemas():
     assert "$fieldSchema = array(" in door
     assert "'label' => 'Omlet API key'" in door
     assert "'test-door' => 'Test API & device'" in door
+    assert "'label' => 'Webhook token'" in door
+    assert "'minlength' => 32" in door
+    assert "test-webhook" in door
     assert "array('open_door', 'close_door', 'stop_door', 'get_door_state')" in door
 
 

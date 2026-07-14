@@ -10,6 +10,9 @@ class door_position(str, Enum):
     OPEN_PENDING = "openpending"
     CLOSE_PENDING = "closepending"
     STOPPING = "stopping"
+    CALIBRATING = "calibrating"
+    OPEN_STOPPED = "openstopped"
+    CLOSE_STOPPED = "closestopped"
     UNKNOWN = "unknown"
 
 
@@ -35,3 +38,19 @@ class chicken_door(device):
 
     def stop(self) -> door_position:
         return self.position
+
+
+def parse_door_position(value: object) -> door_position:
+    if value is None:
+        return door_position.UNKNOWN
+
+    normalized = (
+        str(value)
+        .strip()
+        .lower()
+        .replace("_", "")
+        .replace("-", "")
+        .replace(" ", "")
+    )
+    positions = {position.value: position for position in door_position}
+    return positions.get(normalized, door_position.UNKNOWN)

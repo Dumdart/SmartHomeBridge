@@ -2,7 +2,7 @@ import logging
 from collections.abc import Callable
 from typing import Any
 
-from smart_home_bridge.bridge_devices.chicken_door import door_position
+from smart_home_bridge.bridge_devices.chicken_door import door_position, parse_door_position
 from smart_home_bridge.bridge_devices.chicken_door.door_status import door_status
 from smart_home_bridge.config import DoorApiConfig
 
@@ -88,28 +88,7 @@ def _find_action(device, action_name: str):
 
 
 def _map_position(value: object) -> door_position:
-    if value is None:
-        return door_position.UNKNOWN
-
-    normalized = (
-        str(value)
-        .strip()
-        .lower()
-        .replace("_", "")
-        .replace("-", "")
-        .replace(" ", "")
-    )
-    positions = {
-        "open": door_position.OPEN,
-        "closed": door_position.CLOSED,
-        "opening": door_position.OPENING,
-        "closing": door_position.CLOSING,
-        "openpending": door_position.OPEN_PENDING,
-        "closepending": door_position.CLOSE_PENDING,
-        "stopping": door_position.STOPPING,
-        "unknown": door_position.UNKNOWN,
-    }
-    return positions.get(normalized, door_position.UNKNOWN)
+    return parse_door_position(value)
 
 
 def _int_or_none(value: object) -> int | None:

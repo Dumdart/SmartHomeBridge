@@ -7,6 +7,7 @@ from smart_home_bridge.config import (
     DoorApiConfig,
     HttpConfig,
     MqttConfig,
+    OmletWebhookConfig,
     app_config,
 )
 
@@ -74,6 +75,33 @@ def test_thread_detector_runtime_skips_disabled_threat_pipeline():
     assert runtime.background_services == ()
 
 
+def test_chicken_door_runtime_exposes_enabled_webhook_as_lifecycle_service():
+    config = _config(
+        omlet_webhook=OmletWebhookConfig(
+            enabled=True,
+            token="0123456789abcdef0123456789abcdef",
+        )
+    )
+    composition = create_bridge_composition(config)
+    runtime = _device_composition(composition, "chicken_door").create_runtime(
+        lambda _: FakeMqttClient(),
+    )
+
+    server = runtime.handles["omlet_webhook_server"]
+    assert server is not None
+    assert runtime.background_services == (server,)
+
+
+def test_chicken_door_runtime_skips_disabled_webhook():
+    composition = create_bridge_composition(_config())
+    runtime = _device_composition(composition, "chicken_door").create_runtime(
+        lambda _: FakeMqttClient(),
+    )
+
+    assert runtime.handles["omlet_webhook_server"] is None
+    assert runtime.background_services == ()
+
+
 def test_bridge_composition_uses_enabled_device_list():
     composition = create_bridge_composition(
         _config(devices=BridgeDevicesConfig(enabled=("chicken_door",))),
@@ -124,6 +152,7 @@ def test_device_config_overrides_device_names_ids_and_topics():
 def _config(
     chicken_threat: ChickenThreatConfig | None = None,
     devices: BridgeDevicesConfig | None = None,
+    omlet_webhook: OmletWebhookConfig | None = None,
 ) -> app_config:
     return app_config(
         door_api=DoorApiConfig(
@@ -139,6 +168,7 @@ def _config(
         ),
         http=HttpConfig(host="localhost", port=8080),
         log_level="INFO",
+        omlet_webhook=omlet_webhook or OmletWebhookConfig(),
         camera=CameraConfig(host="esp32cam.local", port=80),
         chicken_threat=chicken_threat or ChickenThreatConfig(enabled=True),
         devices=devices or BridgeDevicesConfig(),

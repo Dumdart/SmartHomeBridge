@@ -13,6 +13,8 @@ dependencies = [
     "paho-mqtt",
     "python-dotenv",
     "smartcoop-python-sdk",
+    "starlette",
+    "uvicorn",
 ]
 
 [project.optional-dependencies]
@@ -21,7 +23,6 @@ dev = [
     "Pillow",
     "PyYAML",
     "pytest",
-    "starlette",
 ]
 gui = [
     "Pillow",
@@ -30,9 +31,7 @@ gui = [
 inference = [
     "Pillow",
     "PyYAML",
-    "starlette",
     "ultralytics",
-    "uvicorn",
 ]
 ml = [
     "fiftyone>=1.2.0",

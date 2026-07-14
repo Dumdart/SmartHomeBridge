@@ -111,13 +111,71 @@ Required values are:
 - `MQTT_BASE_TOPIC`
 
 Common optional values include `MQTT_PORT`, `MQTT_USE_TLS`, `HTTP_HOST`,
-`HTTP_PORT`, `LOG_LEVEL`, `LOG_FILE_PATH`, `BRIDGE_DEVICES_ENABLED`,
+`HTTP_PORT`, `OMLET_WEBHOOK_ENABLED`, `OMLET_WEBHOOK_TOKEN`, `LOG_LEVEL`,
+`LOG_FILE_PATH`, `BRIDGE_DEVICES_ENABLED`,
 `CAMERA_HOST`, `CAMERA_PORT`, `CHICKEN_THREAT_ENABLED`,
 `CHICKEN_THREAT_INFERENCE_URL`, and
 `CHICKEN_THREAT_POLL_INTERVAL_SECONDS`.
 
 Set `MQTT_BASE_TOPIC` to the namespace only, for example
 `smart-home-bridge`. Device topics are appended by the bridge.
+
+## Omlet Door-State Webhooks
+
+Enable the private receiver and set a unique random token containing at least
+32 characters:
+
+```dotenv
+HTTP_HOST=0.0.0.0
+HTTP_PORT=8080
+OMLET_WEBHOOK_ENABLED=true
+OMLET_WEBHOOK_TOKEN=replace-with-a-unique-random-secret
+```
+
+The receiver provides:
+
+```text
+GET  /health
+POST /webhooks/omlet/door-state
+```
+
+Do not expose port 8080 directly to the internet. Omlet sends the configured
+token with each request, so the public leg must use HTTPS to prevent credential
+disclosure. Terminate TLS at a reverse proxy with a publicly trusted
+certificate or at a named managed tunnel, and forward only the webhook path to
+`http://<bridge-private-address>:8080`.
+
+For Caddy or an equivalent reverse proxy, configure DNS or DDNS for the public
+hostname, permit inbound TCP 443, and use a path-limited route such as:
+
+```caddyfile
+hooks.example.com {
+    @omlet path /webhooks/omlet/door-state
+    reverse_proxy @omlet 192.168.1.50:8080
+}
+```
+
+Alternatively, configure a durable named tunnel whose public hostname routes
+to `http://192.168.1.50:8080`. Do not place an interactive access-login policy
+in front of the route because Omlet cannot complete it. In either arrangement,
+do not expose the LoxBerry administration interface.
+
+In the Omlet developer console, create a webhook with the public URL
+`https://hooks.example.com/webhooks/omlet/door-state`, select only **Door
+State**, and enter the same token as `OMLET_WEBHOOK_TOKEN`. Confirm that the
+registration test succeeds, then verify a real transition in Omlet's webhook
+event history and on the retained MQTT state topics. Keep this token separate
+from `DOOR_API_KEY`.
+
+For a local receiver check:
+
+```bash
+curl http://127.0.0.1:8080/health
+curl -X POST http://127.0.0.1:8080/webhooks/omlet/door-state \
+  -H "Authorization: Bearer $OMLET_WEBHOOK_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"deviceId":"your-device-id","parameterName":"Door State","oldValue":"closed","newValue":"open"}'
+```
 
 ## Docker
 
@@ -178,8 +236,9 @@ for that device, or install both independently. Do not upload a GitHub source
 archive or a ZIP of the repository root; LoxBerry expects `plugin.cfg` directly
 at the archive root.
 
-`OmletChickenDoorPlugin` contains door credentials, door topics, retained door
-state subscriptions, and manual door commands. `ChickenBarnCameraPlugin`
+`OmletChickenDoorPlugin` contains door credentials, an authenticated private
+webhook listener, door topics, retained door state subscriptions, and manual
+door commands. `ChickenBarnCameraPlugin`
 contains camera, detector, and external inference settings without requiring
 Omlet credentials.
 

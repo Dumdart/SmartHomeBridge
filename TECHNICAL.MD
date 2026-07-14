@@ -17,6 +17,7 @@ The backend is responsible for:
 - Connecting each enabled device runtime to MQTT
 - Translating MQTT command payloads into domain commands
 - Calling vendor or local integration adapters
+- Receiving authenticated Omlet door-state webhooks on a private HTTP listener
 - Calling the inference backend over HTTP when camera threat polling is enabled
 - Publishing normalized state and usage events back to MQTT
 - Keeping device-specific code behind adapters and controllers
@@ -24,7 +25,7 @@ The backend is responsible for:
 
 The bridge is not responsible for:
 
-- Hosting a public internet API
+- Terminating public TLS or managing public DNS, certificates, and tunnels
 - Loading YOLO models or running local model inference
 - Replacing the smart home controller UI
 - Making autonomous door movement decisions from threat detections
@@ -39,6 +40,7 @@ smart_home_bridge.__main__.App
       -> HttpGate
       -> create_bridge_device_compositions()
          -> chicken_door composition
+            -> authenticated Omlet webhook listener (optional)
          -> chicken_thread_detector composition
    -> BridgeDeviceRuntime per enabled device
       -> MQTT gates and callbacks
@@ -150,6 +152,8 @@ Common optional settings:
 - `MQTT_USE_TLS`, default `false`
 - `HTTP_HOST`, default `0.0.0.0`
 - `HTTP_PORT`, default `8080`
+- `OMLET_WEBHOOK_ENABLED`, default `false`
+- `OMLET_WEBHOOK_TOKEN`, required with at least 32 characters when enabled
 - `LOG_LEVEL`, default `INFO`
 - `LOG_FILE_PATH`, default `logs/smart-home-bridge.log`
 - `BRIDGE_DEVICES_ENABLED`, default
@@ -266,6 +270,9 @@ closing
 openpending
 closepending
 stopping
+calibrating
+openstopped
+closestopped
 unknown
 ```
 
@@ -280,6 +287,31 @@ unknown
 5 = stopping
 6 = fault
 ```
+
+`openstopped` and `closestopped` also map to status code `5`. `calibrating`
+maps to `0`, preserving the established numeric status-code contract.
+
+## Omlet Webhook Contract
+
+When enabled, the chicken-door runtime hosts a private Starlette/Uvicorn
+listener on `HTTP_HOST:HTTP_PORT`. `POST /webhooks/omlet/door-state` accepts the
+Omlet fields `deviceId`, `parameterName`, `oldValue`, and `newValue` after
+validating `OMLET_WEBHOOK_TOKEN` from the `Authorization` header. The handler
+authenticates before reading the body, limits JSON requests to 16 KiB, verifies
+the configured device id, serializes concurrent updates, and publishes only the
+retained door `status` and `status_code` topics.
+
+The endpoint accepts `Door State` and `Door Open State`. Authenticated empty
+objects are successful no-op verification requests, and unrelated parameters
+are acknowledged without changing state. MQTT publication failures return 503
+so Omlet can retry. The private `GET /health` endpoint provides listener
+diagnostics without configuration or secret data.
+
+Public HTTPS is deliberately external to the bridge. Route only
+`/webhooks/omlet/door-state` through a reverse proxy with a publicly trusted
+certificate or a named managed tunnel. The bridge port and LoxBerry admin UI
+must remain private. See `README.MD` for Caddy, tunnel, Omlet-console, and curl
+examples.
 
 Default diagnostic values are published when vendor data is missing:
 

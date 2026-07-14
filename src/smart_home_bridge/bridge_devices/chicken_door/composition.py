@@ -11,6 +11,10 @@ from smart_home_bridge.bridge_devices.chicken_door import (
     door_controller,
     door_position,
 )
+from smart_home_bridge.bridge_devices.chicken_door.omlet_webhook import (
+    OmletDoorWebhookHandler,
+    OmletWebhookServer,
+)
 from smart_home_bridge.bridge_devices.runtime import (
     BridgeDeviceComposition,
     BridgeDeviceMqttBinding,
@@ -60,6 +64,15 @@ def create_chicken_door_composition(
                 position.value if position is not None else None,
             )
         )
+        webhook_handler = None
+        webhook_server = None
+        if config.omlet_webhook.enabled:
+            webhook_handler = OmletDoorWebhookHandler(config.door_api, door, publisher)
+            webhook_server = OmletWebhookServer(
+                config.http,
+                config.omlet_webhook,
+                webhook_handler,
+            )
 
         return BridgeDeviceRuntime(
             name=device_config.name or "chicken_door",
@@ -80,10 +93,15 @@ def create_chicken_door_composition(
                     ),
                 ),
             ),
+            background_services=(
+                (webhook_server,) if webhook_server is not None else ()
+            ),
             handles={
                 "chicken_door_mqtt_gate": gate,
                 "door_mqtt_publisher": publisher,
                 "door_usage_reporter": usage_reporter,
+                "omlet_webhook_handler": webhook_handler,
+                "omlet_webhook_server": webhook_server,
             },
         )
 

@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $flash['output'] = read_log_tail($logFile);
         $flash['message'] = count($flash['output']) > 0 ? 'Showing the latest log entries.' : 'The log is empty.';
         $redirectTab = 'log';
-    } elseif ($action === 'test-camera' || $action === 'test-inference' || $action === 'test-door') {
+    } elseif ($action === 'test-camera' || $action === 'test-inference' || $action === 'test-door' || $action === 'test-webhook') {
         $currentSettings = load_settings($bridgeConfig, array_keys($fieldSchema));
         run_diagnostic($action, $currentSettings, $bridgeCtl, $flash['output'], $flash['exit_code']);
         $flash['type'] = $flash['exit_code'] === 0 ? 'success' : 'error';
@@ -135,6 +135,18 @@ function door_command_message($command, $exitCode) {
 }
 
 function run_diagnostic($action, $settings, $bridgeCtl, &$output, &$exitCode) {
+    if ($action === 'test-webhook') {
+        $host = $settings['HTTP_HOST'] ?? '127.0.0.1';
+        if ($host === '0.0.0.0' || $host === '::') {
+            $host = '127.0.0.1';
+        }
+        $port = max(1, min(65535, (int) ($settings['HTTP_PORT'] ?? 8080)));
+        $url = 'http://' . $host . ':' . $port . '/health';
+        $command = 'curl --silent --show-error --fail --max-time 5 ' . escapeshellarg($url);
+        exec($command . ' 2>&1', $output, $exitCode);
+        return;
+    }
+
     if ($action === 'test-camera') {
         $host = $settings['CAMERA_HOST'] ?? '';
         $port = (int) ($settings['CAMERA_PORT'] ?? 80);
@@ -217,17 +229,30 @@ function validate_settings($posted, $schema, $existingSettings) {
     $errors = array();
     foreach ($schema as $key => $field) {
         $value = trim((string) ($posted[$key] ?? ''));
+        $required = (bool) ($field['required'] ?? false);
+        foreach (($field['required_when'] ?? array()) as $dependency => $expected) {
+            if (trim((string) ($posted[$dependency] ?? '')) === (string) $expected) {
+                $required = true;
+            }
+        }
         if (($field['sensitive'] ?? false) && $value === '') {
-            if (($field['required'] ?? false) && ($existingSettings[$key] ?? '') === '') {
+            $savedValue = trim((string) ($existingSettings[$key] ?? ''));
+            if ($required && $savedValue === '') {
                 $errors[$key] = ($field['label'] ?? $key) . ' is required.';
+            } elseif ($savedValue !== '' && isset($field['minlength']) && strlen($savedValue) < $field['minlength']) {
+                $errors[$key] = 'Enter at least ' . $field['minlength'] . ' characters.';
             }
             continue;
         }
-        if (($field['required'] ?? false) && $value === '') {
+        if ($required && $value === '') {
             $errors[$key] = ($field['label'] ?? $key) . ' is required.';
             continue;
         }
         if ($value === '') {
+            continue;
+        }
+        if (isset($field['minlength']) && strlen($value) < $field['minlength']) {
+            $errors[$key] = 'Enter at least ' . $field['minlength'] . ' characters.';
             continue;
         }
         $type = $field['type'] ?? 'text';
@@ -373,6 +398,8 @@ if ($loxberryUi) {
     .shb-button--primary:hover { background: var(--lb-green-dark); }
     .shb-button--danger { color: #8d2018; border-color: #c87d75; background: #fff4f2; }
     .shb-warning { margin: 0 0 14px; padding: 12px 14px; border: 1px solid #d8b35b; background: #fff8df; color: #624500; }
+    .shb-callout { margin: 0 0 22px; padding: 14px 16px; border-left: 5px solid var(--lb-green); background: #f1f8e9; }
+    .shb-callout p { margin: 6px 0 0; }
     .shb-form-row { display: grid; grid-template-columns: minmax(220px, 29%) minmax(260px, 1fr) 34px; align-items: start; gap: 14px; padding: 9px 4px; }
     .shb-label { padding-top: 9px; font-weight: 400; }
     .shb-control input, .shb-control select { box-sizing: border-box; width: 100%; min-height: 41px; padding: 8px 10px; border: 1px solid #999; border-radius: 2px; background: #fff; color: #111; font: inherit; }
@@ -476,6 +503,7 @@ if ($loxberryUi) {
     </section>
 
     <section class="shb-panel" data-panel="settings"<?php echo $activeTab !== 'settings' ? ' hidden' : ''; ?>>
+        <?php if (isset($webhookGuidance) && $webhookGuidance !== ''): ?><div class="shb-callout"><strong>Webhook HTTPS setup</strong><p><?php echo e($webhookGuidance); ?></p><p>Private listener: http://&lt;loxberry-ip&gt;:<?php echo e($settings['HTTP_PORT'] ?? '8080'); ?>/webhooks/omlet/door-state</p></div><?php endif; ?>
         <form method="post">
             <input type="hidden" name="csrf_token" value="<?php echo e($csrfToken); ?>">
             <input type="hidden" name="action" value="save-settings">

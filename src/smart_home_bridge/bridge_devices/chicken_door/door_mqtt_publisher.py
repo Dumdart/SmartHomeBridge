@@ -45,6 +45,11 @@ class DoorMqttPublisher:
         for topic, payload in messages:
             await self._publish(topic, payload)
 
+    async def publish_position(self, position: door_position) -> None:
+        status = door_status(position)
+        await self._publish(self.topics.status, position.value)
+        await self._publish(self.topics.status_code, str(to_status_code(status)))
+
     async def _publish(self, topic: str, payload: str) -> None:
         if _accepts_retain(self.publish):
             result = self.publish(topic, payload, retain=self.retain)
@@ -67,7 +72,11 @@ def to_status_code(status: door_status) -> int:
         return 3
     if status.position in {door_position.CLOSING, door_position.CLOSE_PENDING}:
         return 4
-    if status.position == door_position.STOPPING:
+    if status.position in {
+        door_position.STOPPING,
+        door_position.OPEN_STOPPED,
+        door_position.CLOSE_STOPPED,
+    }:
         return 5
     return 0
 

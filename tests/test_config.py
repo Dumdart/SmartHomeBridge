@@ -37,6 +37,60 @@ def test_load_config_reads_log_file_path(tmp_path):
     assert config.mqtt.use_tls is True
 
 
+def test_load_config_reads_enabled_omlet_webhook(tmp_path, monkeypatch):
+    monkeypatch.setenv("OMLET_WEBHOOK_ENABLED", "false")
+    monkeypatch.setenv("OMLET_WEBHOOK_TOKEN", "")
+    env_path = tmp_path / ".env"
+    env_path.write_text(
+        "\n".join(
+            [
+                "DOOR_API_KEY=api-key",
+                "DOOR_DEVICE_ID=device-id",
+                "MQTT_HOST=mqtt.local",
+                "MQTT_USERNAME=user",
+                "MQTT_PASSWORD=password",
+                "MQTT_BASE_TOPIC=loxone",
+                "OMLET_WEBHOOK_ENABLED=true",
+                "OMLET_WEBHOOK_TOKEN=0123456789abcdef0123456789abcdef",
+            ]
+        )
+        + "\n"
+    )
+
+    config = load_config(str(env_path), override=True)
+
+    assert config.omlet_webhook.enabled is True
+    assert config.omlet_webhook.token == "0123456789abcdef0123456789abcdef"
+
+
+def test_load_config_rejects_short_enabled_omlet_webhook_token(tmp_path, monkeypatch):
+    monkeypatch.setenv("OMLET_WEBHOOK_ENABLED", "false")
+    monkeypatch.setenv("OMLET_WEBHOOK_TOKEN", "")
+    env_path = tmp_path / ".env"
+    env_path.write_text(
+        "\n".join(
+            [
+                "DOOR_API_KEY=api-key",
+                "DOOR_DEVICE_ID=device-id",
+                "MQTT_HOST=mqtt.local",
+                "MQTT_USERNAME=user",
+                "MQTT_PASSWORD=password",
+                "MQTT_BASE_TOPIC=loxone",
+                "OMLET_WEBHOOK_ENABLED=true",
+                "OMLET_WEBHOOK_TOKEN=short-token",
+            ]
+        )
+        + "\n"
+    )
+
+    try:
+        load_config(str(env_path), override=True)
+    except ValueError as exc:
+        assert "at least 32 characters" in str(exc)
+    else:
+        raise AssertionError("Expected a short enabled webhook token to be rejected")
+
+
 def test_load_config_from_environment_ignores_dotenv_file(tmp_path, monkeypatch):
     env_path = tmp_path / ".env"
     env_path.write_text(

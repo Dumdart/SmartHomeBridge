@@ -23,6 +23,12 @@ def build_backend_status(
             "host": config.http.host,
             "port": config.http.port,
         },
+        "omlet_webhook": {
+            "enabled": config.omlet_webhook.enabled,
+            "token_configured": config.omlet_webhook.token != "",
+            "endpoint": "/webhooks/omlet/door-state",
+            "running": _webhook_running(device_runtimes),
+        },
         "log_level": config.log_level,
         "log_file_path": config.log_file_path,
         "camera": {
@@ -74,4 +80,12 @@ def _pipeline_running(device_runtimes: tuple[BridgeDeviceRuntime, ...]) -> bool:
             is_running = getattr(service, "is_running", None)
             if isinstance(is_running, bool) and is_running:
                 return True
+    return False
+
+
+def _webhook_running(device_runtimes: tuple[BridgeDeviceRuntime, ...]) -> bool:
+    for runtime in device_runtimes:
+        server = runtime.handles.get("omlet_webhook_server")
+        if server is not None and getattr(server, "is_running", False):
+            return True
     return False

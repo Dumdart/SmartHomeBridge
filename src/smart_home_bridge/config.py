@@ -36,6 +36,12 @@ class HttpConfig:
 
 
 @dataclass(frozen=True)
+class OmletWebhookConfig:
+    enabled: bool = False
+    token: str = field(default="", repr=False)
+
+
+@dataclass(frozen=True)
 class CameraConfig:
     host: str = "192.168.1.42"
     port: int = 80
@@ -91,6 +97,7 @@ class app_config:
     http: HttpConfig
     log_level: str
     log_file_path: str = "logs/smart-home-bridge.log"
+    omlet_webhook: OmletWebhookConfig = field(default_factory=OmletWebhookConfig)
     camera: CameraConfig = field(default_factory=CameraConfig)
     chicken_threat: ChickenThreatConfig = field(default_factory=ChickenThreatConfig)
     devices: BridgeDevicesConfig = field(default_factory=BridgeDevicesConfig)
@@ -134,6 +141,14 @@ def _config_from_mapping(
 ) -> app_config:
     devices = _bridge_devices_config(values)
     door_enabled = devices.is_enabled("chicken_door")
+    webhook_enabled = _bool(values, "OMLET_WEBHOOK_ENABLED", False)
+    webhook_token = _get(values, "OMLET_WEBHOOK_TOKEN", "")
+    if webhook_enabled and len(webhook_token) < 32:
+        raise ValueError(
+            "OMLET_WEBHOOK_TOKEN must contain at least 32 characters "
+            "when the webhook is enabled"
+        )
+
     return app_config(
         door_api=DoorApiConfig(
             api_key=(
@@ -161,6 +176,10 @@ def _config_from_mapping(
         ),
         log_level=_get(values, "LOG_LEVEL", "INFO"),
         log_file_path=_get(values, "LOG_FILE_PATH", "logs/smart-home-bridge.log"),
+        omlet_webhook=OmletWebhookConfig(
+            enabled=webhook_enabled,
+            token=webhook_token,
+        ),
         camera=CameraConfig(
             host=_get(values, "CAMERA_HOST", "192.168.1.42"),
             port=_int(values, "CAMERA_PORT", 80),
