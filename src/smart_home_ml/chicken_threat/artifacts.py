@@ -35,6 +35,7 @@ def train_model(dataset_yaml: Path, training_config_path: Path, output_dir: Path
         epochs=int(config["epochs"]),
         imgsz=int(config["image_size"]),
         batch=int(config["batch"]),
+        device=config["device"],
         patience=int(config["patience"]),
         seed=int(config["seed"]),
         project=str(output_dir),

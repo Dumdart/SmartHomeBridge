@@ -19,6 +19,13 @@ from smart_home_ml.chicken_threat.dataset import (
 from smart_home_ml.chicken_threat.taxonomy import load_class_mapping
 
 
+def test_training_config_uses_both_kaggle_t4_gpus_with_memory_safe_batch():
+    config = yaml.safe_load(Path("ml/chicken_threat/configs/training.yaml").read_text())
+
+    assert config["batch"] == 16
+    assert config["device"] == [0, 1]
+
+
 def test_dataset_build_writes_manifest_inspection_bundle_and_archive(tmp_path):
     metadata_path = _write_source_dataset(tmp_path)
     output_dir = tmp_path / "output"
