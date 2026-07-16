@@ -1,10 +1,12 @@
 base_weights: yolo11m.pt
 run_name: chicken-threat-yolo11m-v5
-epochs: 150
+epochs: 100
 image_size: 640
 batch: 24
 device:
   - 0
   - 1
-patience: 30
+patience: 20
+cos_lr: true
+close_mosaic: 10
 seed: 42

@@ -13,7 +13,7 @@ from smart_home_bridge.bridge_devices.chicken_door import (
 )
 
 
-def test_polling_publishes_first_status_and_only_subsequent_changes():
+def test_polling_publishes_every_successful_status_as_a_heartbeat():
     initial = door_status(
         door_position.CLOSED,
         battery_level=80,
@@ -42,7 +42,7 @@ def test_polling_publishes_first_status_and_only_subsequent_changes():
 
     asyncio.run(scenario())
 
-    assert published == [initial, telemetry_change]
+    assert published == [initial, initial, telemetry_change]
     assert controller.device.position == door_position.CLOSED
     assert gateway.calls == ["get_state", "get_state", "get_state"]
 
@@ -65,7 +65,7 @@ def test_polling_failure_keeps_last_successful_comparison_status(caplog):
 
     asyncio.run(scenario())
 
-    assert published == [status]
+    assert published == [status, status]
     assert "Door state poll failed" in caplog.text
 
 

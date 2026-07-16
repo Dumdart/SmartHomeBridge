@@ -31,7 +31,8 @@ class DoorStatePollingService:
         return self._task is not None and not self._task.done()
 
     async def run_once(self) -> door_status | None:
-        status = await self.controller.poll_state(self._last_status)
+        # Check every successful poll is published as an MQTT heartbeat.
+        status = await self.controller.poll_state(None)
         if status is not None:
             if status != self._last_status:
                 await self._write_status(status)

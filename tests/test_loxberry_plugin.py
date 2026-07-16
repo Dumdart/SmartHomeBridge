@@ -82,6 +82,7 @@ def test_each_archive_combines_shared_runtime_with_device_profile(tmp_path):
         "data/python-package/pyproject.toml",
         "data/python-package/README.MD",
         "data/python-package/src/smart_home_bridge/__main__.py",
+        "data/python-package/src/smart_home_bridge/bridge_devices/chicken_door/door_state_polling.py",
         "data/python-package/src/smart_home_contracts/chicken_thread/Detection.py",
     }
     for path in paths:
@@ -105,12 +106,22 @@ def test_omlet_plugin_contains_only_door_configuration(tmp_path):
     plugin_config.read_string(text["plugin.cfg"])
     assert plugin_config["PLUGIN"]["FOLDER"] == "omletchickendoor"
     assert plugin_config["PLUGIN"]["TITLE"] == "OmletChickenDoorPlugin"
+    assert plugin_config["PLUGIN"]["VERSION"] == "0.1.2"
     assert plugin_config["SYSTEM"]["INTERFACE"] == "2.0"
     assert "BRIDGE_DEVICES_ENABLED=chicken_door" in text[
         "config/smart-home-bridge.ini"
     ]
     assert "DOOR_API_KEY=" in text["config/smart-home-bridge.ini"]
     assert "smart-home-bridge/chicken-door" in text["mqtt_subscriptions.cfg"]
+    assert text["mqtt_conversions.cfg"].splitlines() == [
+        "closed=2",
+        "opening=3",
+        "openpending=3",
+        "closing=4",
+        "closepending=4",
+        "stopping=5",
+        "unknown=0",
+    ]
     assert "DOOR_POLL_INTERVAL_SECONDS=5" in text["config/smart-home-bridge.ini"]
     assert "DOOR_POLL_INTERVAL_SECONDS" in text["webfrontend/htmlauth/plugin.php"]
     assert "Latest polled state" in text["webfrontend/htmlauth/plugin.php"]
@@ -164,6 +175,8 @@ def test_shared_lifecycle_installs_runtime_in_plugin_specific_paths(tmp_path):
     _, text = archive_contents(archive_path)
     preinstall = text["preinstall.sh"]
     postinstall = text["postinstall.sh"]
+    preupgrade = text["preupgrade.sh"]
+    postupgrade = text["postupgrade.sh"]
     bridge_ctl = text["bin/bridge_ctl.sh"]
 
     assert "python3 3.11 or newer" in preinstall
@@ -174,6 +187,12 @@ def test_shared_lifecycle_installs_runtime_in_plugin_specific_paths(tmp_path):
     assert 'VENV_DIR="${DATA_DIR}/venv"' in postinstall
     assert 'python3 -m venv "$VENV_DIR"' in postinstall
     assert '"$VENV_BIN/python" -m pip install --upgrade "$PACKAGE_DIR"' in postinstall
+    assert 'kill -0 "$(cat "$PID_FILE")"' in preupgrade
+    assert '"$BRIDGE_CTL" stop' in preupgrade
+    assert 'elif [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")"' in postupgrade
+    assert 'RESTART_AFTER_UPGRADE=true' in postupgrade
+    assert 'sh "${SCRIPT_DIR}/postinstall.sh"' in postupgrade
+    assert '"$BRIDGE_CTL" start' in postupgrade
     assert "SMART_HOME_BRIDGE_CONFIG_SOURCE=loxberry" in bridge_ctl
     assert "export PLUGIN_FOLDER" in bridge_ctl
     assert "Door commands are not supported by $PLUGIN_TITLE" in bridge_ctl

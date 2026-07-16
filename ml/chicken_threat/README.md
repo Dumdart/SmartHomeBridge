@@ -34,6 +34,10 @@ preparation command verifies that every completed manifest is represented before
 the check reports incomplete metadata, rerun the downloader for any cached source (for example
 `--source poultry_roboflow`) to regenerate the combined CSV without reacquiring the datasets.
 
-The command writes the built dataset, inspection report, inspection bundle, and dataset archive below `ml/chicken_threat/work/datasets/`. This avoids transferring raw source data to and from Colab. Inspect the report and bundle locally, then upload only an approved archive to Kaggle for candidate training. Train and evaluate a candidate in Kaggle, including both `v4_test` and `barn_holdout`, then package it locally. Promotion requires a clean comparison to the current production baseline, explicit false-alarm review in the candidate manifest, and `--approve`.
+The command writes the built dataset, inspection report, inspection bundle, and dataset archive below `ml/chicken_threat/work/datasets/`. This avoids transferring raw source data to and from Colab. Inspect the report and bundle locally, then upload only an approved archive to Kaggle for candidate training.
+
+Before training, the Kaggle notebook copies the attached dataset from read-only `/kaggle/input` to `/kaggle/working/chicken-threat-v5-dataset`. This is required because Ultralytics may normalize JPEG EXIF orientation while verifying images and writes cache files beside each split. Pointing training directly at `/kaggle/input` can make writable-image repairs fail and causes Ultralytics to report valid images as corrupt and ignore them. Wait for the copy cell to finish, confirm its `.copy-complete` marker exists, and then run training. If the copy cell is interrupted, rerun it; the incomplete destination is deleted and rebuilt automatically. Do not continue a run whose scan reports `ignoring corrupt image/label` with `Read-only file system`.
+
+Train and evaluate a candidate in Kaggle, including both `v4_test` and `barn_holdout`, then package it locally. Promotion requires a clean comparison to the current production baseline, explicit false-alarm review in the candidate manifest, and `--approve`.
 
 The only model admitted to a SmartHomeBridge release is `src/smart_home_inference/models/chicken_thread/model/chicken_threat_detector.pt`, tracked by Git LFS and verified against `model_manifest.yaml`.

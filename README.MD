@@ -119,9 +119,9 @@ Common optional values include `MQTT_PORT`, `MQTT_USE_TLS`, `HTTP_HOST`,
 
 When `chicken_door` is enabled, the bridge requests the complete Omlet door
 state immediately after MQTT startup and then every
-`DOOR_POLL_INTERVAL_SECONDS` (default `5`). The first successful response is
-published to the retained door topics; later responses are published only when
-the position or telemetry changes. Polling runs locally through the Omlet API
+`DOOR_POLL_INTERVAL_SECONDS` (default `5`). Every successful response is
+published to the retained door topics as a heartbeat, even when the position
+and telemetry are unchanged. Polling runs locally through the Omlet API
 and does not require webhooks, public ports, DNS, or TLS certificates.
 
 Set `MQTT_BASE_TOPIC` to the namespace only, for example

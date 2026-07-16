@@ -37,6 +37,8 @@ def train_model(dataset_yaml: Path, training_config_path: Path, output_dir: Path
         batch=int(config["batch"]),
         device=config["device"],
         patience=int(config["patience"]),
+        cos_lr=bool(config["cos_lr"]),
+        close_mosaic=int(config["close_mosaic"]),
         seed=int(config["seed"]),
         project=str(output_dir),
         name=str(config["run_name"]),

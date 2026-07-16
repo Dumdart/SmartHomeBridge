@@ -24,6 +24,22 @@ def test_training_config_uses_both_kaggle_t4_gpus_with_memory_safe_batch():
 
     assert config["batch"] == 24
     assert config["device"] == [0, 1]
+    assert config["epochs"] == 100
+    assert config["patience"] == 20
+    assert config["cos_lr"] is True
+    assert config["close_mosaic"] == 10
+
+
+def test_kaggle_notebook_trains_from_a_verified_writable_dataset_copy():
+    notebook = json.loads(
+        Path("ml/chicken_threat/notebooks/train_candidate.ipynb").read_text(encoding="utf-8")
+    )
+    source = "\n".join("".join(cell.get("source", [])) for cell in notebook["cells"])
+
+    assert "shutil.copytree(KAGGLE_INPUT_ROOT, DATASET_ROOT)" in source
+    assert 'DATASET_ROOT = Path("/kaggle/working/chicken-threat-v5-dataset")' in source
+    assert "assert len(images) == len(input_images)" in source
+    assert 'data["path"] = str(DATASET_ROOT)' in source
 
 
 def test_dataset_build_writes_manifest_inspection_bundle_and_archive(tmp_path):
