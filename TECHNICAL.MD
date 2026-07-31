@@ -25,6 +25,8 @@ The backend is responsible for:
 The bridge is not responsible for:
 
 - Hosting a public internet API
+- Providing a desktop monitoring or diagnostics application; external MQTT
+  clients such as SmartHomeObserver own that responsibility
 - Loading YOLO models or running local model inference
 - Replacing the smart home controller UI
 - Making autonomous door movement decisions from threat detections
@@ -71,9 +73,7 @@ Runtime code follows a `src` layout:
 - `src/smart_home_bridge/infrastructure/omlet/`: Omlet door adapter
 - `src/smart_home_bridge/infrastructure/camera/`: ESP32-CAM HTTP client
 - `src/smart_home_bridge/infrastructure/api/`: reusable HTTP client
-- `src/smart_home_bridge/services/`: activity logging, `.env` updates, and MQTT
-  usage reporting
-- `src/smart_home_bridge/gui/`: optional PySide6 diagnostics UI
+- `src/smart_home_bridge/services/`: MQTT usage reporting
 - `src/smart_home_inference/`: HTTP inference backend, model registry, and
   YOLO-backed chicken threat inference
 - `src/smart_home_contracts/`: shared detection-frame contracts used by bridge
@@ -91,7 +91,7 @@ creates a `BridgeDeviceRuntime` containing:
 - A `MqttGate` per subscription
 - Device-specific MQTT callbacks
 - Optional background services such as the camera polling pipeline
-- Handles used by tests, CLI status, and the GUI
+- Handles used by tests and CLI status
 
 Topics are built with `MQTT_BASE_TOPIC` plus the device topic. For example:
 
@@ -178,7 +178,6 @@ smart-home-bridge-status
 smart-home-bridge-config-check
 smart-home-bridge-door-command
 smart-home-inference
-smart-home-bridge-gui
 ```
 
 `smart-home-bridge-status` prints a JSON snapshot with configured hosts, ports,
@@ -639,27 +638,6 @@ Run only the inference backend with:
 ```bash
 docker compose --profile inference up -d smart-home-inference
 ```
-
-Neither image installs `.[gui]`, so PySide6 is not present in container runtime.
-Use the local `smart-home-bridge-gui` entry point for desktop diagnostics.
-
-## Desktop GUI
-
-The GUI is optional and local-only. It shows:
-
-- MQTT and backend status
-- Current door state and command topic
-- HTTP diagnostics endpoint
-- Chicken threat detector topic, camera endpoint, risk level, score, and
-  detection count
-- Manual door controls
-- One-off camera inference through the HTTP inference backend with annotated
-  detections
-- Activity output written to `LOG_FILE_PATH`
-- Environment settings for selected MQTT and HTTP values
-
-The GUI can save selected settings to `.env`; runtime processes must be
-restarted to pick up changed configuration.
 
 ## Security Notes
 

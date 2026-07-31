@@ -1,12 +1,11 @@
 from pathlib import Path
 
 
-def test_dockerfile_runs_bridge_without_gui():
+def test_dockerfile_runs_bridge_runtime():
     dockerfile = Path("Dockerfile").read_text()
 
     assert 'pip install --no-cache-dir "."' in dockerfile
     assert ".[inference]" not in dockerfile
-    assert ".[gui]" not in dockerfile
     assert 'CMD ["smart-home-bridge"]' in dockerfile
 
 
@@ -33,7 +32,6 @@ def test_compose_splits_bridge_and_inference_profiles():
     assert 'command: ["smart-home-inference"]' in compose
     assert 'profiles: ["inference"]' in compose
     assert "CHICKEN_THREAT_INFERENCE_URL" in compose
-    assert "smart-home-bridge-gui" not in compose
 
 
 def test_docs_include_inference_only_compose_command():

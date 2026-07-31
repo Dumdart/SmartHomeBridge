@@ -5,6 +5,10 @@ integrate directly. It normalizes device commands and state through MQTT so a
 controller such as Loxone can use stable topics instead of calling vendor APIs,
 camera endpoints, or inference APIs itself.
 
+The bridge runtime is headless. Monitoring and diagnostics belong in external
+MQTT clients such as SmartHomeObserver; the LoxBerry pages remain only as
+deployment adapters for configuration and service control.
+
 The current bridge supports:
 
 - Omlet chicken door control and automatic state polling through
@@ -15,7 +19,6 @@ The current bridge supports:
   optional ESP32-CAM polling pipeline
 - Split inference backend with YOLO-based chicken threat detection and one
   Git-LFS-managed, manifest-verified production model
-- Optional PySide6 desktop diagnostics and manual controls
 - Docker runtimes for the bridge service and optional inference service
 - Modular LoxBerry plugin packaging, settings, service control, log tail, and
   device-specific controls
@@ -44,7 +47,6 @@ pip install -e ".[dev]"
 Install optional extras when needed:
 
 ```bash
-pip install -e ".[gui]"
 pip install -e ".[inference]"
 pip install -e ".[ml]"        # dataset/training/promotion workflow
 ```
@@ -76,13 +78,7 @@ Install the locked environment with `uv sync --extra ml --locked`, then see
 [the ML workflow guide](ml/chicken_threat/README.md). Candidate weights,
 datasets, and source images must not be committed.
 
-5. Run the optional desktop GUI:
-
-```bash
-smart-home-bridge-gui
-```
-
-6. Check configuration or publish a manual door command:
+5. Check configuration or publish a manual door command:
 
 ```bash
 smart-home-bridge-config-check
@@ -93,7 +89,7 @@ smart-home-bridge-door-command open_door
 Supported door commands are `open_door`, `close_door`, `stop_door`, and
 `get_door_state`.
 
-7. Run tests:
+6. Run tests:
 
 ```bash
 pytest
@@ -161,8 +157,7 @@ docker build -f Dockerfile.inference -t smart-home-inference:local .
 
 The bridge image installs only bridge runtime dependencies and runs
 `smart-home-bridge`. The inference image installs `.[inference]` and runs
-`smart-home-inference`. Neither image installs the optional PySide6 GUI
-dependencies.
+`smart-home-inference`.
 
 ## Modular LoxBerry Plugins
 
@@ -205,13 +200,6 @@ Inference dependencies such as Torch and Ultralytics can require multiple GB of
 disk space, so run inference with Docker or install `.[inference]` manually on a
 larger host. The LoxBerry web UI exposes the bridge lifecycle, config checks,
 log tailing, and settings; manual door commands appear only in the door plugin.
-
-## GUI
-
-The GUI is for local diagnostics and manual operation. It can show bridge
-status, MQTT topics, current door state, activity logs, camera/detector status,
-one-off threat inference results from the HTTP inference backend, and annotated
-camera frames. It can also write selected MQTT and HTTP settings back to `.env`.
 
 ## Safety
 

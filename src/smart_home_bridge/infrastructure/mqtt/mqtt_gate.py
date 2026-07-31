@@ -38,7 +38,7 @@ class MqttGate:
         self.config = mqtt_config
         self.mqtt_callbacks = mqtt_callbacks
         self.topic = self._build_topic(mqtt_config.base_topic, topic)
-
+    
     async def start(self):
         await self.client.connect(self.callbacks("on_connect", self.mqtt_callbacks))
 

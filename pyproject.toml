@@ -23,10 +23,6 @@ dev = [
     "pytest",
     "starlette",
 ]
-gui = [
-    "Pillow",
-    "PySide6",
-]
 inference = [
     "Pillow",
     "PyYAML",
@@ -62,9 +58,6 @@ smart-home-ml-evaluate = "smart_home_ml.chicken_threat.cli:evaluate_main"
 smart-home-ml-package-candidate = "smart_home_ml.chicken_threat.cli:package_candidate_main"
 smart-home-ml-compare-baseline = "smart_home_ml.chicken_threat.cli:compare_baseline_main"
 smart-home-ml-promote-model = "smart_home_ml.chicken_threat.cli:promote_model_main"
-
-[project.gui-scripts]
-smart-home-bridge-gui = "smart_home_bridge.gui:run"
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -111,7 +111,7 @@ def test_polling_does_not_emit_command_usage_events():
     assert usage_events == []
 
 
-def test_polling_writes_changed_status_for_the_ui(tmp_path):
+def test_polling_writes_changed_status_for_the_loxberry_panel(tmp_path):
     initial = door_status(
         door_position.CLOSED,
         fault="none",

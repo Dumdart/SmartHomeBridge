@@ -1,6 +1,11 @@
 <?php
 require __DIR__ . '/plugin.php';
 
+$serviceStatusLabel = $serviceStatusLabel ?? 'Bridge service';
+$serviceActionNoun = $serviceActionNoun ?? 'bridge';
+$showStatusDiagnosticDetails = $showStatusDiagnosticDetails ?? true;
+$showDoorSafetyReminder = $showDoorSafetyReminder ?? true;
+
 if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
@@ -45,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             save_settings($bridgeConfig, $fieldSchema, $fixedSettings);
             $flash['type'] = 'success';
-            $flash['message'] = 'Settings saved. Restart the bridge to apply runtime changes.';
+            $flash['message'] = 'Settings saved. Restart the ' . $serviceActionNoun . ' to apply runtime changes.';
             $redirectTab = 'settings';
         }
     } elseif ($action === 'door-command') {
@@ -56,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         run_bridge_command($bridgeCtl, 'door-command', $doorCommand, $flash['output'], $flash['exit_code']);
         $flash['type'] = $flash['exit_code'] === 0 ? 'success' : 'error';
-        $flash['message'] = door_command_message($doorCommand, $flash['exit_code']);
+        $flash['message'] = door_command_message($doorCommand, $flash['exit_code'], $showStatusDiagnosticDetails);
         $redirectTab = 'status';
     } elseif ($action === 'log-tail') {
         $flash['output'] = read_log_tail($logFile);
@@ -75,7 +80,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         run_bridge_command($bridgeCtl, $action, '', $flash['output'], $flash['exit_code']);
         $flash['type'] = $flash['exit_code'] === 0 ? 'success' : 'error';
-        $flash['message'] = command_message($action, $flash['exit_code']);
+        $flash['message'] = command_message($action, $flash['exit_code'], $serviceActionNoun, $showStatusDiagnosticDetails);
         $redirectTab = $action === 'dump-config' ? 'status' : 'status';
     }
 
@@ -116,23 +121,26 @@ function run_bridge_command($bridgeCtl, $command, $argument, &$output, &$exitCod
     exec($shellCommand . ' 2>&1', $output, $exitCode);
 }
 
-function command_message($action, $exitCode) {
+function command_message($action, $exitCode, $serviceActionNoun, $showStatusDiagnosticDetails) {
     if ($exitCode !== 0) {
-        return ucfirst(str_replace('-', ' ', $action)) . ' failed. Open diagnostic details for more information.';
+        $nextStep = $showStatusDiagnosticDetails ? 'Open diagnostic details for more information.' : 'Check the Log tab for more information.';
+        return ucfirst(str_replace('-', ' ', $action)) . ' failed. ' . $nextStep;
     }
+    $serviceActionNoun = strtolower((string) $serviceActionNoun);
     $messages = array(
-        'start' => 'The bridge was started.',
-        'stop' => 'The bridge was stopped.',
-        'restart' => 'The bridge was restarted.',
-        'status' => 'Service status refreshed.',
+        'start' => 'The ' . $serviceActionNoun . ' was started.',
+        'stop' => 'The ' . $serviceActionNoun . ' was stopped.',
+        'restart' => 'The ' . $serviceActionNoun . ' was restarted.',
+        'status' => ucfirst($serviceActionNoun) . ' status refreshed.',
         'dump-config' => 'Configuration validation completed.',
     );
     return $messages[$action] ?? 'Action completed.';
 }
 
-function door_command_message($command, $exitCode) {
+function door_command_message($command, $exitCode, $showStatusDiagnosticDetails) {
     if ($exitCode !== 0) {
-        return 'The door command could not be sent. Review diagnostic details before trying again.';
+        $nextStep = $showStatusDiagnosticDetails ? 'Review diagnostic details before trying again.' : 'Check the Log tab before trying again.';
+        return 'The door command could not be sent. ' . $nextStep;
     }
     $messages = array(
         'open_door' => 'Open command sent. Confirm the door is moving safely.',
@@ -429,7 +437,7 @@ if ($loxberryUi) {
     <section class="shb-panel" data-panel="status"<?php echo $activeTab !== 'status' ? ' hidden' : ''; ?>>
         <div class="shb-status-grid">
             <div class="shb-status">
-                <span class="shb-eyebrow">Bridge service</span>
+                <span class="shb-eyebrow"><?php echo e($serviceStatusLabel); ?></span>
                 <span class="shb-badge <?php echo $serviceRunning ? 'shb-badge--good' : 'shb-badge--bad'; ?>"><?php echo $serviceRunning ? 'Running' : 'Stopped'; ?></span>
             </div>
             <?php foreach ($statusCards as $card): ?>
@@ -445,21 +453,21 @@ if ($loxberryUi) {
             <h2 class="shb-section-title">Service controls</h2>
             <form method="post" class="shb-actions">
                 <input type="hidden" name="csrf_token" value="<?php echo e($csrfToken); ?>">
-                <button class="shb-button shb-button--primary" name="action" value="start">Start bridge</button>
-                <button class="shb-button" name="action" value="restart">Restart bridge</button>
+                <button class="shb-button shb-button--primary" name="action" value="start">Start <?php echo e($serviceActionNoun); ?></button>
+                <button class="shb-button" name="action" value="restart">Restart <?php echo e($serviceActionNoun); ?></button>
                 <button class="shb-button" name="action" value="status">Refresh status</button>
-                <button class="shb-button shb-button--danger" name="action" value="stop" onclick="return confirm('Stop the bridge service? Device updates will pause until it is started again.')">Stop bridge</button>
+                <button class="shb-button shb-button--danger" name="action" value="stop" onclick="return confirm('Stop the <?php echo e($serviceActionNoun); ?>? Device updates will pause until it is started again.')">Stop <?php echo e($serviceActionNoun); ?></button>
             </form>
         </div>
 
         <?php if (count($allowedDoorCommands) > 0): ?>
             <div class="shb-section">
                 <h2 class="shb-section-title">Manual door control</h2>
-                <p class="shb-warning"><strong>Safety:</strong> Keep the doorway in view and clear of animals before sending a movement command.</p>
+                <?php if ($showDoorSafetyReminder): ?><p class="shb-warning"><strong>Safety:</strong> Keep the doorway in view and clear of animals before sending a movement command.</p><?php endif; ?>
                 <form method="post" class="shb-actions">
                     <input type="hidden" name="csrf_token" value="<?php echo e($csrfToken); ?>">
-                    <button class="shb-button shb-button--primary" name="door_command" value="open_door" onclick="return confirm('Open the chicken door now? Confirm the doorway is clear.')">Open door</button>
-                    <button class="shb-button shb-button--danger" name="door_command" value="close_door" onclick="return confirm('Close the chicken door now? Confirm no animal is in the doorway.')">Close door</button>
+                    <button class="shb-button shb-button--primary" name="door_command" value="open_door">Open door</button>
+                    <button class="shb-button shb-button--danger" name="door_command" value="close_door">Close door</button>
                     <button class="shb-button" name="door_command" value="stop_door">Stop movement</button>
                     <button class="shb-button" name="door_command" value="get_door_state">Refresh state</button>
                     <input type="hidden" name="action" value="door-command">
@@ -476,7 +484,7 @@ if ($loxberryUi) {
                 <?php endforeach; ?>
                 <button class="shb-button" name="action" value="dump-config">Validate configuration</button>
             </form>
-            <?php if (is_array($flash) && count($flash['output'] ?? array()) > 0 && $activeTab === 'status'): ?>
+            <?php if ($showStatusDiagnosticDetails && is_array($flash) && count($flash['output'] ?? array()) > 0 && $activeTab === 'status'): ?>
                 <details>
                     <summary>Diagnostic details</summary>
                     <pre class="shb-output"><?php echo e(implode("\n", $flash['output'])); ?></pre>
