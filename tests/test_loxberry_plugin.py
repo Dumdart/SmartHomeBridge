@@ -106,7 +106,7 @@ def test_omlet_plugin_contains_only_door_configuration(tmp_path):
     plugin_config.read_string(text["plugin.cfg"])
     assert plugin_config["PLUGIN"]["FOLDER"] == "omletchickendoor"
     assert plugin_config["PLUGIN"]["TITLE"] == "OmletChickenDoorPlugin"
-    assert plugin_config["PLUGIN"]["VERSION"] == "0.1.2"
+    assert plugin_config["PLUGIN"]["VERSION"] == "1.1.0"
     assert plugin_config["SYSTEM"]["INTERFACE"] == "2.0"
     assert "BRIDGE_DEVICES_ENABLED=chicken_door" in text[
         "config/smart-home-bridge.ini"
@@ -220,7 +220,8 @@ def test_shared_web_panel_uses_native_loxberry_ui_and_safe_form_flow():
     assert "hash_equals($csrfToken" in panel
     assert "Leave blank to keep the existing value" in panel
     assert "redact_output" in panel
-    assert "confirm('Close the chicken door now?" in panel
+    assert "confirm('Close the chicken door now?" not in panel
+    assert "confirm('Open the chicken door now?" not in panel
 
 
 def test_plugin_profiles_define_human_friendly_field_schemas():
@@ -239,6 +240,19 @@ def test_plugin_profiles_define_human_friendly_field_schemas():
     assert "'label' => 'Omlet API key'" in door
     assert "'test-door' => 'Test API & device'" in door
     assert "array('open_door', 'close_door', 'stop_door', 'get_door_state')" in door
+
+
+def test_omlet_plugin_profile_uses_streamlined_v1_1_interface():
+    door = Path(
+        "deploy/loxberry/plugins/omlet_chicken_door/webfrontend/htmlauth/plugin.php"
+    ).read_text()
+
+    assert "$serviceStatusLabel = 'Plugin status';" in door
+    assert "$serviceActionNoun = 'plugin';" in door
+    assert "$showStatusDiagnosticDetails = false;" in door
+    assert "$showDoorSafetyReminder = false;" in door
+    assert "'label' => 'Omlet credentials'" not in door
+    assert "'group' => 'Advanced'" not in door
 
 
 def test_archives_mark_lifecycle_and_control_scripts_executable(tmp_path):
