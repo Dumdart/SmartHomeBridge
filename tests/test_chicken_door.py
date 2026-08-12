@@ -292,7 +292,7 @@ def test_application_wires_door_commands_to_mqtt_publish():
     ]
     usage_topic, usage_payload, usage_retain = published[6]
     usage = json.loads(usage_payload)
-    assert usage_topic == "loxone/chicken-door"
+    assert usage_topic == "loxone/usage/door"
     assert usage_retain is False
     assert usage["event"] == "chicken_door_command"
     assert usage["command"] == "open_door"

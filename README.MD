@@ -109,7 +109,7 @@ Required values are:
 
 Common optional values include `MQTT_PORT`, `MQTT_USE_TLS`, `HTTP_HOST`,
 `HTTP_PORT`, `LOG_LEVEL`, `LOG_FILE_PATH`, `BRIDGE_DEVICES_ENABLED`,
-`DOOR_POLL_INTERVAL_SECONDS`, `CAMERA_HOST`, `CAMERA_PORT`,
+`DOOR_POLL_INTERVAL_SECONDS`, `CHICKEN_DOOR_USAGE_TOPIC`, `CAMERA_HOST`, `CAMERA_PORT`,
 `CHICKEN_THREAT_ENABLED`, `CHICKEN_THREAT_INFERENCE_URL`, and
 `CHICKEN_THREAT_POLL_INTERVAL_SECONDS`.
 
@@ -122,6 +122,8 @@ and does not require webhooks, public ports, DNS, or TLS certificates.
 
 Set `MQTT_BASE_TOPIC` to the namespace only, for example
 `smart-home-bridge`. Device topics are appended by the bridge.
+Door command, state, telemetry, and usage topics can all be configured
+independently. Command usage defaults to `usage/door` below the base topic.
 
 ## Docker
 

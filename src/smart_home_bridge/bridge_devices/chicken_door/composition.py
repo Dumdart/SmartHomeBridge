@@ -26,6 +26,7 @@ from smart_home_bridge.infrastructure.omlet import OmletDoorClient
 from smart_home_bridge.services.mqtt_usage_reporter import MqttUsageReporter
 
 CHICKEN_DOOR_COMMAND_TOPIC = "chicken-door/command"
+CHICKEN_DOOR_USAGE_TOPIC = "usage/door"
 
 
 def create_chicken_door_composition(
@@ -34,6 +35,7 @@ def create_chicken_door_composition(
 ) -> BridgeDeviceComposition:
     device_config = config.devices.for_device("chicken_door")
     command_topic = device_config.topic("command", CHICKEN_DOOR_COMMAND_TOPIC)
+    usage_topic = device_config.topic("usage", CHICKEN_DOOR_USAGE_TOPIC)
     door = chicken_door(
         device_config.device_id or 1,
         device_config.name or "door",
@@ -60,6 +62,7 @@ def create_chicken_door_composition(
                 command,
                 success,
                 position.value if position is not None else None,
+                topic_name=usage_topic,
             )
         )
         polling_service = DoorStatePollingService(
@@ -84,6 +87,7 @@ def create_chicken_door_composition(
                         topics.connected,
                         topics.battery,
                         topics.light_level,
+                        topics.usage,
                     ),
                 ),
             ),
@@ -132,4 +136,5 @@ def build_door_mqtt_topics(
             base_topic,
             topic("light_level", "chicken-door/light_level"),
         ),
+        usage=build_topic(base_topic, topic("usage", CHICKEN_DOOR_USAGE_TOPIC)),
     )

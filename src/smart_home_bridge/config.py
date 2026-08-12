@@ -339,6 +339,11 @@ def _bridge_devices_config(values: Mapping[str, str]) -> BridgeDevicesConfig:
                         "CHICKEN_DOOR_LIGHT_LEVEL_TOPIC",
                         "chicken-door/light_level",
                     ),
+                    "usage": _get(
+                        values,
+                        "CHICKEN_DOOR_USAGE_TOPIC",
+                        "usage/door",
+                    ),
                 },
             ),
             "chicken_thread_detector": BridgeDeviceConfig(

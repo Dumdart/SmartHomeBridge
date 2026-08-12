@@ -136,6 +136,12 @@ def test_load_config_reads_bridge_device_settings(tmp_path):
                 "CHICKEN_DOOR_BRIDGE_NAME=coop_door",
                 "CHICKEN_DOOR_COMMAND_TOPIC=coop/door/cmd",
                 "CHICKEN_DOOR_STATUS_TOPIC=coop/door/state",
+                "CHICKEN_DOOR_STATUS_CODE_TOPIC=coop/door/state-code",
+                "CHICKEN_DOOR_FAULT_TOPIC=coop/door/fault",
+                "CHICKEN_DOOR_CONNECTED_TOPIC=coop/door/connected",
+                "CHICKEN_DOOR_BATTERY_TOPIC=coop/door/battery",
+                "CHICKEN_DOOR_LIGHT_LEVEL_TOPIC=coop/door/light",
+                "CHICKEN_DOOR_USAGE_TOPIC=usage/coop-door",
                 "CHICKEN_THREAD_DETECTOR_BRIDGE_ID=43",
                 "CHICKEN_THREAD_DETECTOR_BRIDGE_NAME=coop_detector",
                 "CHICKEN_THREAD_DETECTOR_TOPIC=coop/detector/detections",
@@ -155,6 +161,12 @@ def test_load_config_reads_bridge_device_settings(tmp_path):
     assert door_config.name == "coop_door"
     assert door_config.topic("command", "") == "coop/door/cmd"
     assert door_config.topic("status", "") == "coop/door/state"
+    assert door_config.topic("status_code", "") == "coop/door/state-code"
+    assert door_config.topic("fault", "") == "coop/door/fault"
+    assert door_config.topic("connected", "") == "coop/door/connected"
+    assert door_config.topic("battery", "") == "coop/door/battery"
+    assert door_config.topic("light_level", "") == "coop/door/light"
+    assert door_config.topic("usage", "") == "usage/coop-door"
     assert detector_config.device_id == 43
     assert detector_config.name == "coop_detector"
     assert detector_config.topic("detections", "") == "coop/detector/detections"

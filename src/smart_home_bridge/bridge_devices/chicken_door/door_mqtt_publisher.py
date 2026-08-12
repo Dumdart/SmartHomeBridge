@@ -19,6 +19,7 @@ class DoorMqttTopics:
     connected: str
     battery: str
     light_level: str
+    usage: str
 
 
 class DoorMqttPublisher:

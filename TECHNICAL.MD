@@ -467,12 +467,11 @@ Usage events are JSON and non-retained.
 Door command usage topic:
 
 ```text
-smart-home-bridge/chicken-door
+smart-home-bridge/usage/door
 ```
 
-The aggregate uses the same `chicken-door` topic family as steering and state
-telemetry. It is published on the family root, not the
-`chicken-door/command` input topic, so reporting cannot execute a command.
+The non-retained aggregate is separated from steering and retained state
+telemetry. Configure its relative topic with `CHICKEN_DOOR_USAGE_TOPIC`.
 
 Payload shape:
 
@@ -552,7 +551,9 @@ shared payload in `deploy/loxberry/shared`. Each payload provides:
   configuration editing, and log tail
 - a device-specific `plugin.php` profile; only the door profile exposes manual
   door command publishing
-- MQTT Gateway seed files for subscriptions, conversions, and reset-after-send
+- MQTT Gateway seed files for subscriptions, conversions, and reset-after-send;
+  topic subscriptions are regenerated from saved plugin settings on install,
+  upgrade, and every settings save
 - the shared bridge Python package without the local inference backend or model
 
 Each `plugin.json` supplies a stable id, display name, LoxBerry folder, archive

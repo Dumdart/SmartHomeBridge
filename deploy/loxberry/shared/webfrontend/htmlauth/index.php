@@ -298,11 +298,33 @@ function save_settings($path, $schema, $fixedSettings) {
     if (!is_dir($directory)) {
         mkdir($directory, 0750, true);
     }
+    $mergedSettings = array_merge($fixedSettings, $settings);
     $lines = array('[smart-home-bridge]');
-    foreach (array_merge($fixedSettings, $settings) as $key => $value) {
+    foreach ($mergedSettings as $key => $value) {
         $lines[] = $key . '=' . ini_value($value);
     }
     file_put_contents($path, implode("\n", $lines) . "\n", LOCK_EX);
+    save_mqtt_subscriptions(
+        dirname($path) . '/mqtt_subscriptions.cfg',
+        $schema,
+        $mergedSettings
+    );
+}
+
+function save_mqtt_subscriptions($path, $schema, $settings) {
+    $baseTopic = trim(trim((string) ($settings['MQTT_BASE_TOPIC'] ?? '')), '/');
+    $subscriptions = array();
+    foreach ($schema as $key => $field) {
+        if ($key === 'MQTT_BASE_TOPIC' || ($field['type'] ?? '') !== 'topic') {
+            continue;
+        }
+        $deviceTopic = trim(trim((string) ($settings[$key] ?? '')), '/');
+        if ($baseTopic !== '' && $deviceTopic !== '') {
+            $subscriptions[] = $baseTopic . '/' . $deviceTopic;
+        }
+    }
+    $subscriptions = array_values(array_unique($subscriptions));
+    file_put_contents($path, implode("\n", $subscriptions) . "\n", LOCK_EX);
 }
 
 function ini_value($value) {

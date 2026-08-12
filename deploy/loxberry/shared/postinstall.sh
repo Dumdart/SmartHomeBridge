@@ -4,6 +4,7 @@ set -eu
 PLUGIN_FOLDER="{{PLUGIN_FOLDER}}"
 PLUGIN_TITLE="{{PLUGIN_TITLE}}"
 CONFIG_DIR="${LBPCONFIG:?}/${PLUGIN_FOLDER}"
+CONFIG_FILE="${CONFIG_DIR}/smart-home-bridge.ini"
 DATA_DIR="${LBPDATA:?}/${PLUGIN_FOLDER}"
 LOG_DIR="${LBPLOG:?}/${PLUGIN_FOLDER}"
 BIN_DIR="${LBPBIN:?}/${PLUGIN_FOLDER}"
@@ -26,10 +27,15 @@ for command in \
     smart-home-bridge \
     smart-home-bridge-status \
     smart-home-bridge-config-check \
-    smart-home-bridge-door-command
+    smart-home-bridge-door-command \
+    smart-home-bridge-sync-mqtt-subscriptions
 do
     ln -sf "$VENV_BIN/$command" "$BIN_DIR/$command"
 done
+
+if [ -f "$CONFIG_FILE" ]; then
+    "$BIN_DIR/smart-home-bridge-sync-mqtt-subscriptions" "$CONFIG_FILE"
+fi
 
 echo "<OK> $PLUGIN_TITLE plugin directories prepared"
 echo "<OK> SmartHomeBridge shared runtime installed"

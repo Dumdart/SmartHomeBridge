@@ -21,16 +21,17 @@ class MqttUsageReporter:
         command: str,
         success: bool,
         position: str | None = None,
+        *,
+        topic_name: str,
     ) -> None:
         await self._publish(
-            "chicken-door",
+            topic_name,
             {
                 "event": "chicken_door_command",
                 "command": command,
                 "success": success,
                 "position": position,
             },
-            usage_namespace=False,
         )
 
     async def report_camera_inference(
@@ -42,7 +43,7 @@ class MqttUsageReporter:
         detection_count: int | None = None,
     ) -> None:
         await self._publish(
-            "camera-inference",
+            "usage/camera-inference",
             {
                 "event": "camera_inference",
                 "source": source,
@@ -57,12 +58,10 @@ class MqttUsageReporter:
         self,
         topic_name: str,
         event: dict[str, Any],
-        usage_namespace: bool = True,
     ) -> None:
         event["timestamp"] = datetime.now(UTC).isoformat()
         payload = json.dumps(event, separators=(",", ":"))
-        namespace = "usage/" if usage_namespace else ""
-        topic = f"{self.base_topic}/{namespace}{topic_name}"
+        topic = f"{self.base_topic}/{topic_name.strip('/')}"
 
         try:
             if _accepts_retain(self.publish):

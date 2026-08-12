@@ -30,6 +30,7 @@ def test_bridge_composition_wires_shared_devices_and_topics():
     assert composition.command_topic == "loxone/chicken-door/command"
     assert composition.door_topics.status == "loxone/chicken-door/status"
     assert composition.door_topics.status_code == "loxone/chicken-door/status_code"
+    assert composition.door_topics.usage == "loxone/usage/door"
     assert composition.detector_topic == "loxone/chicken-thread-detector"
 
 
@@ -112,7 +113,16 @@ def test_device_config_overrides_device_names_ids_and_topics():
                     "chicken_door",
                     device_id=42,
                     name="coop_door",
-                    topics={"command": "coop/door/cmd", "status": "coop/door/state"},
+                    topics={
+                        "command": "coop/door/cmd",
+                        "status": "coop/door/state",
+                        "status_code": "coop/door/state-code",
+                        "fault": "coop/door/fault",
+                        "connected": "coop/door/connected",
+                        "battery": "coop/door/battery",
+                        "light_level": "coop/door/light",
+                        "usage": "telemetry/coop-door",
+                    },
                 ),
                 "chicken_thread_detector": _device_config(
                     "chicken_thread_detector",
@@ -130,6 +140,12 @@ def test_device_config_overrides_device_names_ids_and_topics():
     assert composition.door.name == "coop_door"
     assert composition.command_topic == "loxone/coop/door/cmd"
     assert composition.door_topics.status == "loxone/coop/door/state"
+    assert composition.door_topics.status_code == "loxone/coop/door/state-code"
+    assert composition.door_topics.fault == "loxone/coop/door/fault"
+    assert composition.door_topics.connected == "loxone/coop/door/connected"
+    assert composition.door_topics.battery == "loxone/coop/door/battery"
+    assert composition.door_topics.light_level == "loxone/coop/door/light"
+    assert composition.door_topics.usage == "loxone/telemetry/coop-door"
     assert composition.threat_detector.device_id == 43
     assert composition.threat_detector.name == "coop_detector"
     assert composition.detector_topic == "loxone/coop/detector/detections"

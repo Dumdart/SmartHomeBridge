@@ -106,13 +106,14 @@ def test_omlet_plugin_contains_only_door_configuration(tmp_path):
     plugin_config.read_string(text["plugin.cfg"])
     assert plugin_config["PLUGIN"]["FOLDER"] == "omletchickendoor"
     assert plugin_config["PLUGIN"]["TITLE"] == "OmletChickenDoorPlugin"
-    assert plugin_config["PLUGIN"]["VERSION"] == "1.1.0"
+    assert plugin_config["PLUGIN"]["VERSION"] == "1.1.1"
     assert plugin_config["SYSTEM"]["INTERFACE"] == "2.0"
     assert "BRIDGE_DEVICES_ENABLED=chicken_door" in text[
         "config/smart-home-bridge.ini"
     ]
     assert "DOOR_API_KEY=" in text["config/smart-home-bridge.ini"]
-    assert "smart-home-bridge/chicken-door" in text["mqtt_subscriptions.cfg"]
+    assert "smart-home-bridge/usage/door" in text["mqtt_subscriptions.cfg"]
+    assert "smart-home-bridge/chicken-door\n" not in text["mqtt_subscriptions.cfg"]
     assert text["mqtt_conversions.cfg"].splitlines() == [
         "closed=2",
         "opening=3",
@@ -123,6 +124,10 @@ def test_omlet_plugin_contains_only_door_configuration(tmp_path):
         "unknown=0",
     ]
     assert "DOOR_POLL_INTERVAL_SECONDS=5" in text["config/smart-home-bridge.ini"]
+    assert "CHICKEN_DOOR_USAGE_TOPIC=usage/door" in text[
+        "config/smart-home-bridge.ini"
+    ]
+    assert "CHICKEN_DOOR_USAGE_TOPIC" in text["webfrontend/htmlauth/plugin.php"]
     assert "DOOR_POLL_INTERVAL_SECONDS" in text["webfrontend/htmlauth/plugin.php"]
     assert "Latest polled state" in text["webfrontend/htmlauth/plugin.php"]
     assert "door-poll-status" in text["webfrontend/htmlauth/index.php"]
@@ -187,6 +192,8 @@ def test_shared_lifecycle_installs_runtime_in_plugin_specific_paths(tmp_path):
     assert 'VENV_DIR="${DATA_DIR}/venv"' in postinstall
     assert 'python3 -m venv "$VENV_DIR"' in postinstall
     assert '"$VENV_BIN/python" -m pip install --upgrade "$PACKAGE_DIR"' in postinstall
+    assert "smart-home-bridge-sync-mqtt-subscriptions" in postinstall
+    assert '"$CONFIG_FILE"' in postinstall
     assert 'kill -0 "$(cat "$PID_FILE")"' in preupgrade
     assert '"$BRIDGE_CTL" stop' in preupgrade
     assert 'elif [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")"' in postupgrade
@@ -206,6 +213,8 @@ def test_shared_web_panel_preserves_fixed_device_profile():
     assert "door-command" in panel
     assert "log-tail" in panel
     assert "array_merge($fixedSettings, $settings)" in panel
+    assert "save_mqtt_subscriptions" in panel
+    assert "mqtt_subscriptions.cfg" in panel
     assert "escapeshellarg($argument)" in panel
     assert "count($allowedDoorCommands) > 0" in panel
 

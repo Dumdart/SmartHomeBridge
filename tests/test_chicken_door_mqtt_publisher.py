@@ -74,6 +74,7 @@ def _topics() -> DoorMqttTopics:
         connected="base/chicken-door/connected",
         battery="base/chicken-door/battery",
         light_level="base/chicken-door/light_level",
+        usage="base/usage/door",
     )
 
 
