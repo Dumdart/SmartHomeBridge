@@ -167,17 +167,36 @@ This repository produces two independently installable LoxBerry archives:
 | `OmletChickenDoorPlugin` | Door configuration, MQTT state, logs, and manual commands | Primary integration |
 | `ChickenBarnCameraPlugin` | Camera and external inference configuration | Experimental |
 
-Build all plugins:
+### Install a released plugin
+
+For normal installation, open the repository's
+[GitHub Releases](https://github.com/Dumdart/SmartHomeBridge/releases), select a
+release, and download the ZIP for the plugin you need. Upload that ZIP in
+LoxBerry's plugin installation page.
+
+Each version tag beginning with `v` runs the release workflow. After the test
+suite passes, the workflow builds both LoxBerry plugin archives and attaches
+them to the corresponding GitHub release.
+
+Do not download GitHub's automatically generated "Source code" archives and do
+not upload a ZIP of the repository root. LoxBerry requires `plugin.cfg` at the
+archive root, which is provided by the plugin ZIPs attached to the release.
+
+### Build a plugin locally
+
+Local builds are intended for development or testing unreleased changes. Install
+the locked development environment, then build all plugins:
 
 ```bash
-python scripts/build_loxberry_plugin.py
+uv sync --extra dev --locked
+uv run python scripts/build_loxberry_plugin.py
 ```
 
 Or build only the plugin you need:
 
 ```bash
-python scripts/build_loxberry_plugin.py --plugin omlet-chicken-door
-python scripts/build_loxberry_plugin.py --plugin chicken-barn-camera
+uv run python scripts/build_loxberry_plugin.py --plugin omlet-chicken-door
+uv run python scripts/build_loxberry_plugin.py --plugin chicken-barn-camera
 ```
 
 The archives are written to:
@@ -187,9 +206,9 @@ build/loxberry/omlet-chicken-door-loxberry.zip
 build/loxberry/chicken-barn-camera-loxberry.zip
 ```
 
-Upload the generated plugin archive in LoxBerry. Do not upload the GitHub source
-archive or a ZIP of the repository root: LoxBerry requires `plugin.cfg` at the
-archive root.
+Upload the generated plugin archive in LoxBerry. The release workflow uses
+`dist/Loxberry` instead of the local default directory before attaching the
+same installable archives to the GitHub release.
 
 Both plugins install the shared bridge runtime, but each enables only its own
 device domain. The door plugin reads LoxBerry's MQTT broker configuration and
