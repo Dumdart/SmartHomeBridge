@@ -13,14 +13,16 @@ BUILD_REQUIREMENTS_FILE="${PACKAGE_DIR}/requirements-loxberry-build.txt"
 REQUIREMENTS_FILE="${PACKAGE_DIR}/requirements-loxberry.txt"
 VENV_DIR="${DATA_DIR}/venv"
 VENV_BIN="${VENV_DIR}/bin"
-VENV_CANDIDATE="${DATA_DIR}/.venv-runtime-$$"
-VENV_LINK="${DATA_DIR}/.venv-link-$$"
+VENV_CANDIDATE=""
+VENV_LINK=""
 VENV_PREVIOUS_LINK="${DATA_DIR}/venv.previous"
 ACTIVATED=false
 
 cleanup_candidate() {
-    rm -f "$VENV_LINK"
-    if [ "$ACTIVATED" = false ]; then
+    if [ -n "$VENV_LINK" ]; then
+        rm -f "$VENV_LINK"
+    fi
+    if [ "$ACTIVATED" = false ] && [ -n "$VENV_CANDIDATE" ]; then
         rm -rf "$VENV_CANDIDATE"
     fi
 }
@@ -58,6 +60,8 @@ if [ ! -f "$BUILD_REQUIREMENTS_FILE" ] || [ ! -f "$REQUIREMENTS_FILE" ]; then
 fi
 
 cleanup_previous_runtime
+VENV_CANDIDATE="$(mktemp -d "${DATA_DIR}/.venv-runtime-XXXXXX")"
+VENV_LINK="${VENV_CANDIDATE}.link"
 python3 -m venv "$VENV_CANDIDATE"
 "$VENV_CANDIDATE/bin/python" -m pip install \
     --requirement "$BUILD_REQUIREMENTS_FILE"
@@ -78,7 +82,8 @@ if [ -L "$VENV_DIR" ]; then
     previous_runtime="$(readlink -f "$VENV_DIR" 2>/dev/null || true)"
     mv -Tf "$VENV_LINK" "$VENV_DIR"
 elif [ -e "$VENV_DIR" ]; then
-    previous_runtime="${DATA_DIR}/.venv-legacy-$$"
+    previous_runtime="$(mktemp -d "${DATA_DIR}/.venv-legacy-XXXXXX")"
+    rmdir "$previous_runtime"
     mv "$VENV_DIR" "$previous_runtime"
     if ! mv "$VENV_LINK" "$VENV_DIR"; then
         mv "$previous_runtime" "$VENV_DIR"

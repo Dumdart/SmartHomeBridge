@@ -195,7 +195,9 @@ def test_shared_lifecycle_installs_runtime_in_plugin_specific_paths(tmp_path):
     assert 'DATA_DIR="${LBPDATA:?}/${PLUGIN_FOLDER}"' in postinstall
     assert 'PACKAGE_DIR="${DATA_DIR}/python-package"' in postinstall
     assert 'VENV_DIR="${DATA_DIR}/venv"' in postinstall
-    assert 'VENV_CANDIDATE="${DATA_DIR}/.venv-runtime-$$"' in postinstall
+    assert 'VENV_CANDIDATE="$(mktemp -d "${DATA_DIR}/.venv-runtime-XXXXXX")"' in postinstall
+    assert 'VENV_LINK="${VENV_CANDIDATE}.link"' in postinstall
+    assert 'previous_runtime="$(mktemp -d "${DATA_DIR}/.venv-legacy-XXXXXX")"' in postinstall
     assert 'python3 -m venv "$VENV_CANDIDATE"' in postinstall
     assert '--requirement "$BUILD_REQUIREMENTS_FILE"' in postinstall
     assert '--requirement "$REQUIREMENTS_FILE"' in postinstall
