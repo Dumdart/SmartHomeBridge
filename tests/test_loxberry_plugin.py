@@ -107,7 +107,7 @@ def test_omlet_plugin_contains_only_door_configuration(tmp_path):
     plugin_config.read_string(text["plugin.cfg"])
     assert plugin_config["PLUGIN"]["FOLDER"] == "omletchickendoor"
     assert plugin_config["PLUGIN"]["TITLE"] == "OmletChickenDoorPlugin"
-    assert plugin_config["PLUGIN"]["VERSION"] == "1.1.1"
+    assert plugin_config["PLUGIN"]["VERSION"] == "1.1.2"
     assert plugin_config["SYSTEM"]["INTERFACE"] == "2.0"
     assert "BRIDGE_DEVICES_ENABLED=chicken_door" in text[
         "config/smart-home-bridge.ini"
@@ -155,6 +155,7 @@ def test_camera_plugin_contains_only_camera_configuration(tmp_path):
     plugin_config.read_string(text["plugin.cfg"])
     assert plugin_config["PLUGIN"]["FOLDER"] == "chickenbarncamera"
     assert plugin_config["PLUGIN"]["TITLE"] == "ChickenBarnCameraPlugin"
+    assert plugin_config["PLUGIN"]["VERSION"] == "0.1.3"
     assert "BRIDGE_DEVICES_ENABLED=chicken_thread_detector" in text[
         "config/smart-home-bridge.ini"
     ]
@@ -307,6 +308,7 @@ def test_archives_mark_lifecycle_and_control_scripts_executable(tmp_path):
         ):
             mode = archive.getinfo(name).external_attr >> 16
             assert mode & 0o111
+            assert b"\r\n" not in archive.read(name)
 
 
 def test_plugins_have_distinct_vector_and_generated_raster_icons(tmp_path):

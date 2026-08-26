@@ -109,7 +109,8 @@ Required values are:
 
 Common optional values include `MQTT_PORT`, `MQTT_USE_TLS`, `HTTP_HOST`,
 `HTTP_PORT`, `LOG_LEVEL`, `LOG_FILE_PATH`, `BRIDGE_DEVICES_ENABLED`,
-`DOOR_POLL_INTERVAL_SECONDS`, `CHICKEN_DOOR_USAGE_TOPIC`, `CAMERA_HOST`, `CAMERA_PORT`,
+`DOOR_API_TIMEOUT_SECONDS`, `DOOR_POLL_INTERVAL_SECONDS`,
+`CHICKEN_DOOR_USAGE_TOPIC`, `CAMERA_HOST`, `CAMERA_PORT`,
 `CHICKEN_THREAT_ENABLED`, `CHICKEN_THREAT_INFERENCE_URL`, and
 `CHICKEN_THREAT_POLL_INTERVAL_SECONDS`.
 
@@ -197,6 +198,12 @@ and fixes `BRIDGE_DEVICES_ENABLED` to its own domain. Shared payload files live
 under `deploy/loxberry/shared`; device profiles and machine-readable manifests
 live under `deploy/loxberry/plugins`. The manifest catalog is intended to be the
 input for a later interactive ZIP or Docker-image installer.
+
+Plugin installation builds and validates a fresh versioned virtual environment,
+then switches the stable `venv` link to it. This recreates the runtime after a
+Debian/Python migration instead of reusing packages installed for an older
+Python minor version. Runtime dependencies are installed from the pinned
+`requirements-loxberry.txt` bundle before the application package is installed.
 
 Inference dependencies such as Torch and Ultralytics can require multiple GB of
 disk space, so run inference with Docker or install `.[inference]` manually on a

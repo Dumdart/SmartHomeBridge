@@ -602,9 +602,21 @@ or stopped by the plugin.
 The script exports `SMART_HOME_BRIDGE_CONFIG_SOURCE=loxberry`, resolves
 standard LoxBerry directories from `LBPBIN`, `LBPCONFIG`, `LBHOMEDIR`,
 `LBPDATA`, and `LBPLOG`, and writes process output to the plugin log directory.
-Each plugin installs an isolated bridge virtual environment at
-`$LBPDATA/$PLUGIN_FOLDER/venv`. Run the inference service with Docker or on a
-larger host when local model serving is required.
+Each plugin builds a fresh versioned virtual environment, installs the pinned
+LoxBerry dependency set, validates imports and dependency consistency, and then
+switches `$LBPDATA/$PLUGIN_FOLDER/venv` to the validated runtime. The previous
+runtime remains available until the next successful installation. This also
+recreates environments when Debian changes its default Python minor version.
+
+`start` runs a configuration preflight and confirms that the background process
+survives its startup grace period before reporting success. PID checks verify the
+process command line through `/proc` so a stale or reused PID cannot stop an
+unrelated process. Fatal application startup errors propagate as nonzero process
+exits after cleanup.
+
+Omlet HTTP calls use `DOOR_API_TIMEOUT_SECONDS` (default `10`) for every request.
+Run the inference service with Docker or on a larger host when local model
+serving is required.
 
 ## Docker Runtime
 
