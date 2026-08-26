@@ -81,6 +81,7 @@ def test_each_archive_combines_shared_runtime_with_device_profile(tmp_path):
         "mqtt_subscriptions.cfg",
         "data/python-package/pyproject.toml",
         "data/python-package/README.MD",
+        "data/python-package/requirements-loxberry.txt",
         "data/python-package/src/smart_home_bridge/__main__.py",
         "data/python-package/src/smart_home_bridge/bridge_devices/chicken_door/door_state_polling.py",
         "data/python-package/src/smart_home_contracts/chicken_thread/Detection.py",
@@ -190,8 +191,15 @@ def test_shared_lifecycle_installs_runtime_in_plugin_specific_paths(tmp_path):
     assert 'DATA_DIR="${LBPDATA:?}/${PLUGIN_FOLDER}"' in postinstall
     assert 'PACKAGE_DIR="${DATA_DIR}/python-package"' in postinstall
     assert 'VENV_DIR="${DATA_DIR}/venv"' in postinstall
-    assert 'python3 -m venv "$VENV_DIR"' in postinstall
-    assert '"$VENV_BIN/python" -m pip install --upgrade "$PACKAGE_DIR"' in postinstall
+    assert 'VENV_CANDIDATE="${DATA_DIR}/.venv-runtime-$$"' in postinstall
+    assert 'python3 -m venv "$VENV_CANDIDATE"' in postinstall
+    assert '--requirement "$REQUIREMENTS_FILE"' in postinstall
+    assert "--no-build-isolation" in postinstall
+    assert "--no-deps" in postinstall
+    assert '"$VENV_CANDIDATE/bin/python" -m pip check' in postinstall
+    assert "import smart_home_bridge" in postinstall
+    assert 'mv -Tf "$VENV_LINK" "$VENV_DIR"' in postinstall
+    assert 'VENV_PREVIOUS_LINK="${DATA_DIR}/venv.previous"' in postinstall
     assert "smart-home-bridge-sync-mqtt-subscriptions" in postinstall
     assert '"$CONFIG_FILE"' in postinstall
     assert 'kill -0 "$(cat "$PID_FILE")"' in preupgrade
@@ -203,6 +211,16 @@ def test_shared_lifecycle_installs_runtime_in_plugin_specific_paths(tmp_path):
     assert "SMART_HOME_BRIDGE_CONFIG_SOURCE=loxberry" in bridge_ctl
     assert "export PLUGIN_FOLDER" in bridge_ctl
     assert "Door commands are not supported by $PLUGIN_TITLE" in bridge_ctl
+
+
+def test_loxberry_runtime_requirements_pin_all_runtime_dependencies():
+    requirements = Path("requirements-loxberry.txt").read_text().splitlines()
+
+    assert requirements
+    assert all("==" in line for line in requirements if line.strip())
+    assert any(line.startswith("smartcoop-python-sdk==") for line in requirements)
+    assert any(line.startswith("requests==") for line in requirements)
+    assert any(line.startswith("paho-mqtt==") for line in requirements)
 
 
 def test_shared_web_panel_preserves_fixed_device_profile():

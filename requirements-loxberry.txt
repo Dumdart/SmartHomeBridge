@@ -1,0 +1,10 @@
+certifi==2026.6.17
+charset-normalizer==3.4.9
+idna==3.18; python_version < "3.14"
+idna==3.7; python_version >= "3.14"
+paho-mqtt==2.1.0
+python-dotenv==1.2.2
+requests==2.34.2
+setuptools==83.0.0
+smartcoop-python-sdk==1.1.7
+urllib3==2.7.0
