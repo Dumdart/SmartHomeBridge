@@ -1,217 +1,291 @@
 # Smart Home Bridge
 
-Smart Home Bridge connects LAN smart home systems to devices that are awkward to
-integrate directly. It normalizes device commands and state through MQTT so a
-controller such as Loxone can use stable topics instead of calling vendor APIs,
-camera endpoints, or inference APIs itself.
+Connect an Omlet Smart Automatic Chicken Coop Door to MQTT and Loxone without
+exposing vendor APIs directly to your home-automation controller.
 
-The bridge runtime is headless. Monitoring and diagnostics belong in external
-MQTT clients such as SmartHomeObserver; the LoxBerry pages remain only as
-deployment adapters for configuration and service control.
+Smart Home Bridge polls the door through `smartcoop-python-sdk`, translates its
+state and telemetry into stable, retained MQTT topics, and accepts door commands
+over MQTT. It can run as a Python service, in Docker, or as a LoxBerry plugin.
 
-The current bridge supports:
+> [!IMPORTANT]
+> This is a personal project built for a specific smart-home setup. Review the
+> configuration, MQTT topics, and safety guidance before using it with physical
+> equipment.
 
-- Omlet chicken door control and automatic state polling through
-  `smartcoop-python-sdk`
-- Retained MQTT door status topics for state, numeric status, fault, connection,
-  battery, and light level
-- Chicken threat assessment from either injected MQTT detection payloads or an
-  optional ESP32-CAM polling pipeline
-- Split inference backend with YOLO-based chicken threat detection and one
-  Git-LFS-managed, manifest-verified production model
-- Docker runtimes for the bridge service and optional inference service
-- Modular LoxBerry plugin packaging, settings, service control, log tail, and
-  device-specific controls
+## What it does
 
+- Controls an Omlet chicken door through MQTT.
+- Polls and publishes the door position, numeric status, fault state,
+  connectivity, battery level, and light level.
+- Retains the latest door state so controllers receive it immediately after
+  subscribing.
+- Runs without webhooks, public ports, DNS, or TLS certificates for the Omlet
+  integration.
+- Provides health, configuration-check, runtime-status, and manual-command
+  tooling.
+- Packages the integration as a dedicated LoxBerry plugin.
+- Optionally runs an ESP32-CAM and YOLO inference experiment for chicken-threat
+  detection.
 
-Supported LoxBerry Plugins:
+For MQTT contracts, architecture, configuration sources, and Loxone integration
+details, see [TECHNICAL.MD](TECHNICAL.MD).
 
-- OmletChickenDoorPlugin
-- ChickenBarnCameraPlugin
+## Project status
 
+The Omlet door integration is the main purpose of this repository.
 
-For deeper architecture, MQTT, Loxone, and configuration details, see
-[TECHNICAL.MD](TECHNICAL.MD).
+The `ChickenBarnCameraPlugin`, inference service, ESP32-CAM firmware, and model
+training workflow are an experiment. The pipeline works end to end and can run
+inference, but the current model is not good enough to rely on for accurate
+threat detection. I later concluded that this experiment should have lived in
+an independent repository; keeping it here makes the project harder to read and
+obscures the otherwise focused door bridge. It remains included because it is
+functional and documents the experiment, not because it should be treated as a
+production-ready safety system.
 
-## Development
+## How it fits together
 
-1. Copy `.env.example` to `.env` and set the required door and MQTT values.
-   Configure camera and detector values when you use threat inference.
+```text
+Omlet door API
+      |
+      v
+Smart Home Bridge <----> MQTT broker <----> Loxone / other MQTT clients
 
-2. Install the package from the repository root:
-
-```bash
-pip install -e ".[dev]"
+ESP32-CAM  --->  Smart Home Bridge  --->  Inference service (experimental)
 ```
 
-Install optional extras when needed:
+The bridge is deliberately headless. Use an MQTT client such as
+SmartHomeObserver for monitoring and diagnostics. The LoxBerry pages are
+deployment adapters for configuration, service control, logs, and manual door
+commands.
 
-```bash
-pip install -e ".[inference]"
-pip install -e ".[ml]"        # dataset/training/promotion workflow
-```
+## Requirements
 
-3. Run the backend:
+- Python 3.11 or newer, or Docker with Docker Compose
+- An MQTT broker
+- An Omlet API key and device ID for the door integration
+- A trusted local network
+- LoxBerry only when using the packaged LoxBerry plugin
 
-```bash
-smart-home-bridge
-```
+The optional inference service has much heavier dependencies, including Torch
+and Ultralytics, and can require several gigabytes of disk space.
 
-4. Run the optional inference backend when camera threat polling is enabled:
+## Quick start with Docker
 
-```bash
-smart-home-inference
-```
+1. Clone the repository and create your local configuration:
 
-The inference backend requires the `inference` extra.
+   ```bash
+   git clone https://github.com/Dumdart/SmartHomeBridge.git
+   cd SmartHomeBridge
+   cp .env.example .env
+   ```
 
-## Chicken-Threat ML Workflow
+2. Edit `.env`. At minimum, configure:
 
-The training lifecycle is deliberately separate from deployment. A local,
-gitignored ML workspace prepares and inspects a source-metadata-driven dataset,
-Kaggle trains a candidate, and a human promotes a candidate only after the
-fixed v4 test and barn holdout gates pass. The release contains only the
-approved production model in the inference package/image; LoxBerry continues to
-use the external inference service.
+   ```dotenv
+   DOOR_API_KEY=your-api-key
+   DOOR_DEVICE_ID=your-device-id
+   MQTT_HOST=192.168.1.20
+   MQTT_USERNAME=smart_home_bridge
+   MQTT_PASSWORD=change-me
+   MQTT_BASE_TOPIC=smart-home-bridge
+   CHICKEN_THREAT_ENABLED=false
+   ```
 
-Install the locked environment with `uv sync --extra ml --locked`, then see
-[the ML workflow guide](ml/chicken_threat/README.md). Candidate weights,
-datasets, and source images must not be committed.
+3. Start the bridge:
 
-5. Check configuration or publish a manual door command:
+   ```bash
+   docker compose up -d
+   ```
 
-```bash
-smart-home-bridge-config-check
-smart-home-bridge-status
-smart-home-bridge-door-command open_door
-```
+4. Inspect the service:
 
-Supported door commands are `open_door`, `close_door`, `stop_door`, and
-`get_door_state`.
+   ```bash
+   docker compose ps
+   docker compose logs -f smart-home-bridge
+   ```
 
-6. Run tests:
+The default HTTP service is exposed on port `8080`. Change `HTTP_PORT` in
+`.env` when that port is already in use.
 
-```bash
-pytest
-```
+### Optional experimental inference service
 
-## Runtime Configuration
-
-The default configuration source is `.env` or process environment variables.
-Required values are:
-
-- `DOOR_API_KEY`
-- `DOOR_DEVICE_ID`
-- `MQTT_HOST`
-- `MQTT_USERNAME`
-- `MQTT_PASSWORD`
-- `MQTT_BASE_TOPIC`
-
-Common optional values include `MQTT_PORT`, `MQTT_USE_TLS`, `HTTP_HOST`,
-`HTTP_PORT`, `LOG_LEVEL`, `LOG_FILE_PATH`, `BRIDGE_DEVICES_ENABLED`,
-`DOOR_POLL_INTERVAL_SECONDS`, `CHICKEN_DOOR_USAGE_TOPIC`, `CAMERA_HOST`, `CAMERA_PORT`,
-`CHICKEN_THREAT_ENABLED`, `CHICKEN_THREAT_INFERENCE_URL`, and
-`CHICKEN_THREAT_POLL_INTERVAL_SECONDS`.
-
-When `chicken_door` is enabled, the bridge requests the complete Omlet door
-state immediately after MQTT startup and then every
-`DOOR_POLL_INTERVAL_SECONDS` (default `5`). Every successful response is
-published to the retained door topics as a heartbeat, even when the position
-and telemetry are unchanged. Polling runs locally through the Omlet API
-and does not require webhooks, public ports, DNS, or TLS certificates.
-
-Set `MQTT_BASE_TOPIC` to the namespace only, for example
-`smart-home-bridge`. Device topics are appended by the bridge.
-Door command, state, telemetry, and usage topics can all be configured
-independently. Command usage defaults to `usage/door` below the base topic.
-
-## Docker
-
-Run the bridge with Docker Compose:
-
-```bash
-docker compose up -d
-```
-
-Run the bridge plus inference backend:
+Set the camera and `CHICKEN_THREAT_*` values in `.env`, then start the inference
+profile:
 
 ```bash
 docker compose --profile inference up -d
 ```
 
-Run only the inference backend:
+To run only the inference service:
 
 ```bash
 docker compose --profile inference up -d smart-home-inference
 ```
 
-Build the bridge image directly:
+## Install from source
+
+Create and activate a virtual environment, then install the project from the
+repository root:
 
 ```bash
-docker build -t smart-home-bridge:local .
+python -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+cp .env.example .env
 ```
 
-Build the inference image directly:
+On Windows PowerShell, activate the environment with:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+After editing `.env`, validate the configuration and start the service:
 
 ```bash
-docker build -f Dockerfile.inference -t smart-home-inference:local .
+smart-home-bridge-config-check
+smart-home-bridge
 ```
 
-The bridge image installs only bridge runtime dependencies and runs
-`smart-home-bridge`. The inference image installs `.[inference]` and runs
-`smart-home-inference`.
-
-## Modular LoxBerry Plugins
-
-List the available device plugins:
+Useful commands:
 
 ```bash
-python scripts/build_loxberry_plugin.py --list
+smart-home-bridge-status
+smart-home-bridge-door-command open_door
+smart-home-bridge-door-command close_door
+smart-home-bridge-door-command stop_door
+smart-home-bridge-door-command get_door_state
 ```
 
-Build both plugins, or select one by its stable manifest id:
+## LoxBerry installation
+
+This repository produces two independently installable LoxBerry archives:
+
+| Plugin | Purpose | Status |
+| --- | --- | --- |
+| `OmletChickenDoorPlugin` | Door configuration, MQTT state, logs, and manual commands | Primary integration |
+| `ChickenBarnCameraPlugin` | Camera and external inference configuration | Experimental |
+
+Build all plugins:
 
 ```bash
 python scripts/build_loxberry_plugin.py
+```
+
+Or build only the plugin you need:
+
+```bash
 python scripts/build_loxberry_plugin.py --plugin omlet-chicken-door
 python scripts/build_loxberry_plugin.py --plugin chicken-barn-camera
 ```
 
-The builds are written to `build/loxberry/omlet-chicken-door-loxberry.zip` and
-`build/loxberry/chicken-barn-camera-loxberry.zip`. Upload only the plugin needed
-for that device, or install both independently. Do not upload a GitHub source
-archive or a ZIP of the repository root; LoxBerry expects `plugin.cfg` directly
-at the archive root.
+The archives are written to:
 
-`OmletChickenDoorPlugin` contains door credentials, polling frequency, door
-topics, retained door state subscriptions, and manual door commands.
-`ChickenBarnCameraPlugin` contains camera, detector, and external inference
-settings without requiring Omlet credentials.
+```text
+build/loxberry/omlet-chicken-door-loxberry.zip
+build/loxberry/chicken-barn-camera-loxberry.zip
+```
 
-When `SMART_HOME_BRIDGE_CONFIG_SOURCE=loxberry`, the bridge reads MQTT broker
-settings from LoxBerry's system MQTT configuration and bridge-specific settings
-from `smart-home-bridge.ini`.
+Upload the generated plugin archive in LoxBerry. Do not upload the GitHub source
+archive or a ZIP of the repository root: LoxBerry requires `plugin.cfg` at the
+archive root.
 
-Each plugin installs the same shared bridge runtime during LoxBerry installation
-and fixes `BRIDGE_DEVICES_ENABLED` to its own domain. Shared payload files live
-under `deploy/loxberry/shared`; device profiles and machine-readable manifests
-live under `deploy/loxberry/plugins`. The manifest catalog is intended to be the
-input for a later interactive ZIP or Docker-image installer.
+Both plugins install the shared bridge runtime, but each enables only its own
+device domain. The door plugin reads LoxBerry's MQTT broker configuration and
+adds the Omlet-specific settings and controls.
 
-Inference dependencies such as Torch and Ultralytics can require multiple GB of
-disk space, so run inference with Docker or install `.[inference]` manually on a
-larger host. The LoxBerry web UI exposes the bridge lifecycle, config checks,
-log tailing, and settings; manual door commands appear only in the door plugin.
+## Configuration
 
-## Safety
+Configuration comes from `.env` or process environment variables by default.
+LoxBerry installations can instead use `SMART_HOME_BRIDGE_CONFIG_SOURCE=loxberry`.
 
-- Keep MQTT, camera, and configured HTTP endpoints on a trusted LAN.
-- Use MQTT authentication and restrict ACLs where possible.
-- Never commit `.env`, firmware `secrets.h`, API keys, MQTT passwords, camera
-  tokens, broker details, or private model data.
-- Treat door movement as safety-sensitive: validate command topics and payloads,
-  publish confirmed state, and preserve manual override behavior.
+Core settings:
+
+| Variable | Required | Description |
+| --- | --- | --- |
+| `DOOR_API_KEY` | For door integration | Omlet API key |
+| `DOOR_DEVICE_ID` | For door integration | Omlet door device ID |
+| `MQTT_HOST` | Yes | MQTT broker hostname or IP address |
+| `MQTT_USERNAME` | Yes by default | MQTT username |
+| `MQTT_PASSWORD` | Yes by default | MQTT password |
+| `MQTT_BASE_TOPIC` | Yes | Namespace only, for example `smart-home-bridge` |
+| `MQTT_PORT` | No | MQTT broker port; see `.env.example` |
+| `MQTT_USE_TLS` | No | Enable MQTT TLS; defaults to `false` |
+| `DOOR_POLL_INTERVAL_SECONDS` | No | Door polling interval; defaults to `5` |
+| `HTTP_HOST` | No | HTTP bind address; defaults to `0.0.0.0` |
+| `HTTP_PORT` | No | HTTP port; defaults to `8080` |
+| `LOG_LEVEL` | No | Runtime log level; defaults to `INFO` |
+
+`MQTT_BASE_TOPIC` must contain only the namespace. The bridge appends its device
+topics. Command, status, telemetry, and usage topics can be overridden
+individually; the complete reference is in [.env.example](.env.example).
+
+When the door integration is enabled, the bridge requests the complete Omlet
+state immediately after connecting to MQTT and then once per polling interval.
+Every successful response is republished as a retained heartbeat, even if the
+state has not changed.
+
+## Development
+
+Install the development dependencies and run the test suite:
+
+```bash
+pip install -e ".[dev]"
+pytest
+```
+
+Build the images directly when testing Docker changes:
+
+```bash
+docker build -t smart-home-bridge:local .
+docker build -f Dockerfile.inference -t smart-home-inference:local .
+```
+
+For work on the experimental inference runtime:
+
+```bash
+pip install -e ".[inference]"
+smart-home-inference
+```
+
+The model-training lifecycle is intentionally separate from deployment. Install
+the locked ML environment with `uv sync --extra ml --locked`, then follow the
+[chicken-threat ML workflow](ml/chicken_threat/README.md). Datasets, source
+images, and candidate weights must not be committed.
+
+## Security and safety
+
+- Keep MQTT, camera, and HTTP endpoints on a trusted LAN.
+- Use MQTT authentication and restrictive broker ACLs.
+- Never commit `.env`, firmware `secrets.h`, API keys, passwords, camera tokens,
+  broker details, or private model data.
+- Treat door movement as safety-sensitive. Preserve a physical/manual override
+  and verify the area around the door before issuing remote commands.
+- Do not use the experimental camera model as the sole basis for protecting
+  animals or triggering safety-critical automation.
+
+## Troubleshooting
+
+Start with the configuration checker and service logs:
+
+```bash
+smart-home-bridge-config-check
+smart-home-bridge-status
+docker compose logs -f smart-home-bridge
+```
+
+If MQTT state does not appear, verify the broker address, credentials, ACLs,
+TLS setting, and base topic. If door polling fails, verify the Omlet API key and
+device ID. LoxBerry deployment and runtime details are documented in
+[TECHNICAL.MD](TECHNICAL.MD#loxone-and-loxberry).
+
+## Contributing
+
+Issues and focused pull requests are welcome. Keep changes small, follow the
+existing architecture, add or update tests for behavior changes, and ensure the
+full test suite passes before opening a pull request.
 
 ## License
 
-MIT
+This project is licensed under the MIT License.
