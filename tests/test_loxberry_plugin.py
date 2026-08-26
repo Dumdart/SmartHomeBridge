@@ -125,11 +125,13 @@ def test_omlet_plugin_contains_only_door_configuration(tmp_path):
         "unknown=0",
     ]
     assert "DOOR_POLL_INTERVAL_SECONDS=5" in text["config/smart-home-bridge.ini"]
+    assert "DOOR_API_TIMEOUT_SECONDS=10" in text["config/smart-home-bridge.ini"]
     assert "CHICKEN_DOOR_USAGE_TOPIC=usage/door" in text[
         "config/smart-home-bridge.ini"
     ]
     assert "CHICKEN_DOOR_USAGE_TOPIC" in text["webfrontend/htmlauth/plugin.php"]
     assert "DOOR_POLL_INTERVAL_SECONDS" in text["webfrontend/htmlauth/plugin.php"]
+    assert "DOOR_API_TIMEOUT_SECONDS" in text["webfrontend/htmlauth/plugin.php"]
     assert "Latest polled state" in text["webfrontend/htmlauth/plugin.php"]
     assert "door-poll-status" in text["webfrontend/htmlauth/index.php"]
     assert "formatDoorPollStatus" in text["webfrontend/htmlauth/index.php"]
