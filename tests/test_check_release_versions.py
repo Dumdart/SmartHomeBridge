@@ -1,12 +1,20 @@
+import importlib.util
 from pathlib import Path
 
 import pytest
 
-from scripts.check_release_versions import (
-    check_release_version,
-    parse_release_tag,
-    read_project_version,
+
+SCRIPT_PATH = (
+    Path(__file__).resolve().parents[1] / "scripts" / "check_release_versions.py"
 )
+SPEC = importlib.util.spec_from_file_location("check_release_versions", SCRIPT_PATH)
+assert SPEC is not None and SPEC.loader is not None
+check_release_versions = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(check_release_versions)
+
+check_release_version = check_release_versions.check_release_version
+parse_release_tag = check_release_versions.parse_release_tag
+read_project_version = check_release_versions.read_project_version
 
 
 def write_pyproject(path: Path, version: str) -> Path:
