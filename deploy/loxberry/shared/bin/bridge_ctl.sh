@@ -42,7 +42,7 @@ is_bridge_process() {
     fi
     command_line="$(tr '\000' ' ' < "/proc/${bridge_pid}/cmdline")"
     case "$command_line" in
-        *smart-home-bridge*) return 0 ;;
+        *"${VENV_BIN}/smart-home-bridge"*) return 0 ;;
         *) return 1 ;;
     esac
 }

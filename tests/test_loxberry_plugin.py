@@ -1,8 +1,13 @@
 import configparser
 import importlib.util
+import os
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 from zipfile import ZipFile
+
+import pytest
 
 
 def load_loxberry_packager():
@@ -222,7 +227,70 @@ def test_shared_lifecycle_installs_runtime_in_plugin_specific_paths(tmp_path):
     assert 'sleep "$STARTUP_GRACE_SECONDS"' in bridge_ctl
     assert 'is_bridge_process "$BRIDGE_PID"' in bridge_ctl
     assert '"/proc/${bridge_pid}/cmdline"' in bridge_ctl
+    assert '*"${VENV_BIN}/smart-home-bridge"*' in bridge_ctl
     assert 'rm -f "$PID_FILE"' in bridge_ctl
+
+
+@pytest.mark.skipif(os.name == "nt", reason="requires Linux /proc process metadata")
+@pytest.mark.parametrize(
+    ("process_plugin", "expected_running"),
+    (("omletchickendoor", True), ("chickenbarncamera", False)),
+)
+def test_control_script_matches_only_its_plugin_process(
+    tmp_path,
+    process_plugin,
+    expected_running,
+):
+    packager = load_loxberry_packager()
+    archive_path = packager.build_plugin_archive(
+        "omlet-chicken-door",
+        tmp_path / "door.zip",
+    )
+    with ZipFile(archive_path) as archive:
+        bridge_ctl = tmp_path / "bridge_ctl.sh"
+        bridge_ctl.write_bytes(archive.read("bin/bridge_ctl.sh"))
+    bridge_ctl.chmod(0o755)
+
+    data_dir = tmp_path / "data"
+    process_command = (
+        data_dir
+        / process_plugin
+        / "venv"
+        / "bin"
+        / "smart-home-bridge"
+    )
+    process_command.parent.mkdir(parents=True)
+    sleep_command = shutil.which("sleep")
+    assert sleep_command is not None
+    shutil.copy2(sleep_command, process_command)
+
+    log_dir = tmp_path / "logs" / "omletchickendoor"
+    log_dir.mkdir(parents=True)
+    process = subprocess.Popen([process_command, "30"])
+    try:
+        (log_dir / "smart-home-bridge.pid").write_text(
+            str(process.pid),
+            encoding="utf-8",
+        )
+        environment = {
+            **os.environ,
+            "LBPBIN": str(tmp_path / "bin"),
+            "LBPCONFIG": str(tmp_path / "config"),
+            "LBHOMEDIR": str(tmp_path / "loxberry"),
+            "LBPDATA": str(data_dir),
+            "LBPLOG": str(tmp_path / "logs"),
+        }
+
+        result = subprocess.run(
+            ["/bin/sh", bridge_ctl, "is-running"],
+            env=environment,
+            check=False,
+        )
+
+        assert (result.returncode == 0) is expected_running
+    finally:
+        process.terminate()
+        process.wait(timeout=5)
 
 
 def test_loxberry_runtime_requirements_pin_all_runtime_dependencies():
