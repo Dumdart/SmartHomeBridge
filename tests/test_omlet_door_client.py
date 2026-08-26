@@ -2,7 +2,10 @@ from types import SimpleNamespace
 
 from smart_home_bridge.bridge_devices.chicken_door import door_position
 from smart_home_bridge.config import DoorApiConfig
-from smart_home_bridge.infrastructure.omlet.omlet_door_client import OmletDoorClient
+from smart_home_bridge.infrastructure.omlet.omlet_door_client import (
+    OmletDoorClient,
+    SmartCoopHttpClient,
+)
 
 
 def test_omlet_door_client_maps_device_state_to_bridge_status():
@@ -71,6 +74,51 @@ def test_omlet_door_client_raises_when_action_is_missing():
         assert str(exc) == "Action open not found for Omlet device."
     else:
         raise AssertionError("Expected missing Omlet action to be rejected")
+
+
+def test_smartcoop_http_client_applies_timeout_to_every_request():
+    session = FakeSession()
+    client = SmartCoopHttpClient("api-key", 7.5, session=session)
+
+    assert client.get("device/device-id", params={"details": "all"}) == {
+        "ok": True,
+    }
+    assert client.post("action/open", json={"value": True}) == {"ok": True}
+
+    assert session.requests == [
+        (
+            "GET",
+            "https://x107.omlet.co.uk/api/v1/device/device-id",
+            7.5,
+            {"params": {"details": "all"}},
+        ),
+        (
+            "POST",
+            "https://x107.omlet.co.uk/api/v1/action/open",
+            7.5,
+            {"json": {"value": True}},
+        ),
+    ]
+
+
+class FakeSession:
+    def __init__(self):
+        self.requests = []
+
+    def request(self, method, url, headers, timeout, **kwargs):
+        assert headers["Authorization"] == "Bearer api-key"
+        self.requests.append((method, url, timeout, kwargs))
+        return FakeResponse()
+
+
+class FakeResponse:
+    status_code = 200
+
+    def raise_for_status(self):
+        return None
+
+    def json(self):
+        return {"ok": True}
 
 
 class FakeOmlet:

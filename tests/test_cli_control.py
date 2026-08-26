@@ -49,6 +49,34 @@ def test_publish_door_command_rejects_unknown_command(monkeypatch):
         asyncio.run(main._publish_door_command("format_disk"))
 
 
+def test_main_propagates_startup_failure_after_cleanup(monkeypatch):
+    events = []
+
+    class FailingApp:
+        def __init__(self, config):
+            events.append(("init", config))
+
+        async def start(self):
+            events.append(("start",))
+            raise RuntimeError("mqtt unavailable")
+
+        async def wait_forever(self):
+            raise AssertionError("wait_forever must not run after failed startup")
+
+        async def stop(self):
+            events.append(("stop",))
+
+    config = _config()
+    monkeypatch.setattr(main, "load_app_config", lambda: config)
+    monkeypatch.setattr(main, "configure_logging", lambda loaded: None)
+    monkeypatch.setattr(main, "App", FailingApp)
+
+    with pytest.raises(RuntimeError, match="mqtt unavailable"):
+        asyncio.run(main.main())
+
+    assert events == [("init", config), ("start",), ("stop",)]
+
+
 def _config():
     return app_config(
         door_api=DoorApiConfig(api_key="api-key", device_id="device-id"),

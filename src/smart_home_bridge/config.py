@@ -17,6 +17,7 @@ DEFAULT_CHICKEN_THREAT_INFERENCE_URL = (
 class DoorApiConfig:
     api_key: str = field(repr=False)
     device_id: str
+    request_timeout_seconds: float = 10.0
 
 
 @dataclass(frozen=True)
@@ -151,6 +152,11 @@ def _config_from_mapping(
                 _required(values, "DOOR_DEVICE_ID")
                 if door_enabled
                 else _get(values, "DOOR_DEVICE_ID", "")
+            ),
+            request_timeout_seconds=_positive_float(
+                values,
+                "DOOR_API_TIMEOUT_SECONDS",
+                10.0,
             ),
         ),
         mqtt=MqttConfig(

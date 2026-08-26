@@ -197,6 +197,17 @@ adds the Omlet-specific settings and controls.
 
 ## Configuration
 
+Plugin installation builds and validates a fresh versioned virtual environment,
+then switches the stable `venv` link to it. This recreates the runtime after a
+Debian/Python migration instead of reusing packages installed for an older
+Python minor version. Runtime dependencies are installed from the pinned
+`requirements-loxberry.txt` bundle before the application package is installed.
+
+Inference dependencies such as Torch and Ultralytics can require multiple GB of
+disk space, so run inference with Docker or install `.[inference]` manually on a
+larger host. The LoxBerry web UI exposes the bridge lifecycle, config checks,
+log tailing, and settings; manual door commands appear only in the door plugin.
+
 Configuration comes from `.env` or process environment variables by default.
 LoxBerry installations can instead use `SMART_HOME_BRIDGE_CONFIG_SOURCE=loxberry`.
 

@@ -3326,6 +3326,7 @@ source = { editable = "." }
 dependencies = [
     { name = "paho-mqtt" },
     { name = "python-dotenv" },
+    { name = "requests" },
     { name = "smartcoop-python-sdk" },
 ]
 
@@ -3374,6 +3375,7 @@ requires-dist = [
     { name = "pyyaml", marker = "extra == 'dev'" },
     { name = "pyyaml", marker = "extra == 'inference'" },
     { name = "pyyaml", marker = "extra == 'ml'", specifier = "==6.0.2" },
+    { name = "requests", specifier = ">=2.32,<3" },
     { name = "requests", marker = "extra == 'ml'", specifier = ">=2.32.0" },
     { name = "roboflow", marker = "extra == 'ml'", specifier = ">=1.1.58" },
     { name = "smartcoop-python-sdk" },
