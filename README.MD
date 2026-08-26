@@ -178,6 +178,11 @@ Each version tag beginning with `v` runs the release workflow. After the test
 suite passes, the workflow builds both LoxBerry plugin archives and attaches
 them to the corresponding GitHub release.
 
+Docker images are not distributed as GitHub Release assets. Clone or download
+the source for the selected release and let `docker compose up -d` build the
+images locally. CI builds both Dockerfiles to validate them before a release is
+created.
+
 Do not download GitHub's automatically generated "Source code" archives and do
 not upload a ZIP of the repository root. LoxBerry requires `plugin.cfg` at the
 archive root, which is provided by the plugin ZIPs attached to the release.

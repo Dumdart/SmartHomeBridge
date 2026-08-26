@@ -43,27 +43,11 @@ jobs:
       - name: Build LoxBerry plugins
         run: uv run python scripts/build_loxberry_plugin.py --output-dir dist/Loxberry
 
-      - name: Build Docker images
-        env:
-          RELEASE_TAG: ${{ github.ref_name }}
-        run: |
-          DOCKER_TAG="${RELEASE_TAG//+/-}"
-          docker build --tag "smart-home-bridge:${DOCKER_TAG}" .
-          docker build --file Dockerfile.inference --tag "smart-home-inference:${DOCKER_TAG}" .
-
-      - name: Export Docker images
-        env:
-          RELEASE_TAG: ${{ github.ref_name }}
-        run: |
-          DOCKER_TAG="${RELEASE_TAG//+/-}"
-          docker image save "smart-home-bridge:${DOCKER_TAG}" | gzip > "dist/smart-home-bridge-${RELEASE_TAG}.tar.gz"
-          docker image save "smart-home-inference:${DOCKER_TAG}" | gzip > "dist/smart-home-inference-${RELEASE_TAG}.tar.gz"
-
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4
         with:
           name: release-deployments
-          path: dist/
+          path: dist/Loxberry/*.zip
           if-no-files-found: error
 
   github-release:
@@ -91,8 +75,7 @@ jobs:
             RELEASE_OPTIONS+=(--prerelease)
           fi
           gh release create "${RELEASE_TAG}" \
-            dist/*.tar.gz \
-            dist/Loxberry/*.zip \
+            dist/*.zip \
             --repo "${GITHUB_REPOSITORY}" \
             --title "SmartHomeBridge ${RELEASE_TAG}" \
             --generate-notes \

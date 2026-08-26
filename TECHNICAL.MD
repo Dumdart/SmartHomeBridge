@@ -620,6 +620,10 @@ serving is required.
 
 ## Docker Runtime
 
+Docker images are built locally from the release source and are not attached to
+GitHub Releases. The CI workflow validates both Dockerfiles, while the release
+workflow publishes only the installable LoxBerry plugin ZIPs.
+
 The bridge Docker image uses `python:3.12-slim`, installs the package without
 optional extras, and runs:
 
