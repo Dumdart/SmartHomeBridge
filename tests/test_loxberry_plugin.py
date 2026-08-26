@@ -202,15 +202,20 @@ def test_shared_lifecycle_installs_runtime_in_plugin_specific_paths(tmp_path):
     assert 'VENV_PREVIOUS_LINK="${DATA_DIR}/venv.previous"' in postinstall
     assert "smart-home-bridge-sync-mqtt-subscriptions" in postinstall
     assert '"$CONFIG_FILE"' in postinstall
-    assert 'kill -0 "$(cat "$PID_FILE")"' in preupgrade
+    assert '"$BRIDGE_CTL" is-running' in preupgrade
     assert '"$BRIDGE_CTL" stop' in preupgrade
-    assert 'elif [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")"' in postupgrade
+    assert '"$BRIDGE_CTL" is-running' in postupgrade
     assert 'RESTART_AFTER_UPGRADE=true' in postupgrade
     assert 'sh "${SCRIPT_DIR}/postinstall.sh"' in postupgrade
     assert '"$BRIDGE_CTL" start' in postupgrade
     assert "SMART_HOME_BRIDGE_CONFIG_SOURCE=loxberry" in bridge_ctl
     assert "export PLUGIN_FOLDER" in bridge_ctl
     assert "Door commands are not supported by $PLUGIN_TITLE" in bridge_ctl
+    assert 'smart-home-bridge-config-check" >/dev/null' in bridge_ctl
+    assert 'sleep "$STARTUP_GRACE_SECONDS"' in bridge_ctl
+    assert 'is_bridge_process "$BRIDGE_PID"' in bridge_ctl
+    assert '"/proc/${bridge_pid}/cmdline"' in bridge_ctl
+    assert 'rm -f "$PID_FILE"' in bridge_ctl
 
 
 def test_loxberry_runtime_requirements_pin_all_runtime_dependencies():

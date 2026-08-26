@@ -8,7 +8,6 @@ BACKUP_FILE="/tmp/${PLUGIN_FOLDER}-smart-home-bridge.ini"
 RUNNING_FILE="/tmp/${PLUGIN_FOLDER}-smart-home-bridge-was-running"
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 BRIDGE_CTL="${LBPBIN:?}/${PLUGIN_FOLDER}/bridge_ctl.sh"
-PID_FILE="${LBPLOG:?}/${PLUGIN_FOLDER}/smart-home-bridge.pid"
 RESTART_AFTER_UPGRADE=false
 
 mkdir -p "$CONFIG_DIR"
@@ -22,7 +21,7 @@ fi
 # Check upgrades from older releases may leave the old bridge process running.
 if [ -f "$RUNNING_FILE" ]; then
     RESTART_AFTER_UPGRADE=true
-elif [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
+elif [ -x "$BRIDGE_CTL" ] && "$BRIDGE_CTL" is-running >/dev/null 2>&1; then
     RESTART_AFTER_UPGRADE=true
     "$BRIDGE_CTL" stop
 fi
