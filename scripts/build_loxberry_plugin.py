@@ -27,6 +27,8 @@ PYTHON_PACKAGE_ROOT = "data/python-package"
 PYTHON_PACKAGE_FILES = (
     PROJECT_ROOT / "pyproject.toml",
     PROJECT_ROOT / "README.MD",
+    PROJECT_ROOT / "requirements-loxberry-build.txt",
+    PROJECT_ROOT / "requirements-loxberry.txt",
 )
 PYTHON_PACKAGE_SOURCE_DIRS = (
     PROJECT_ROOT / "src" / "smart_home_bridge",
@@ -344,6 +346,8 @@ def _collect_archive_files(shared_dir: Path, plugin_dir: Path) -> dict[str, Path
 
 def _render_file(path: Path, replacements: dict[bytes, bytes]) -> bytes:
     content = path.read_bytes()
+    if path.suffix == ".sh" or path.as_posix().endswith("uninstall/uninstall"):
+        content = content.replace(b"\r\n", b"\n")
     for placeholder, value in replacements.items():
         content = content.replace(placeholder, value)
     if b"{{" in content or b"}}" in content:

@@ -1,8 +1,13 @@
 import configparser
 import importlib.util
+import os
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 from zipfile import ZipFile
+
+import pytest
 
 
 def load_loxberry_packager():
@@ -81,6 +86,8 @@ def test_each_archive_combines_shared_runtime_with_device_profile(tmp_path):
         "mqtt_subscriptions.cfg",
         "data/python-package/pyproject.toml",
         "data/python-package/README.MD",
+        "data/python-package/requirements-loxberry-build.txt",
+        "data/python-package/requirements-loxberry.txt",
         "data/python-package/src/smart_home_bridge/__main__.py",
         "data/python-package/src/smart_home_bridge/bridge_devices/chicken_door/door_state_polling.py",
         "data/python-package/src/smart_home_contracts/chicken_thread/Detection.py",
@@ -106,7 +113,7 @@ def test_omlet_plugin_contains_only_door_configuration(tmp_path):
     plugin_config.read_string(text["plugin.cfg"])
     assert plugin_config["PLUGIN"]["FOLDER"] == "omletchickendoor"
     assert plugin_config["PLUGIN"]["TITLE"] == "OmletChickenDoorPlugin"
-    assert plugin_config["PLUGIN"]["VERSION"] == "1.1.1"
+    assert plugin_config["PLUGIN"]["VERSION"] == "1.1.2"
     assert plugin_config["SYSTEM"]["INTERFACE"] == "2.0"
     assert "BRIDGE_DEVICES_ENABLED=chicken_door" in text[
         "config/smart-home-bridge.ini"
@@ -124,11 +131,13 @@ def test_omlet_plugin_contains_only_door_configuration(tmp_path):
         "unknown=0",
     ]
     assert "DOOR_POLL_INTERVAL_SECONDS=5" in text["config/smart-home-bridge.ini"]
+    assert "DOOR_API_TIMEOUT_SECONDS=10" in text["config/smart-home-bridge.ini"]
     assert "CHICKEN_DOOR_USAGE_TOPIC=usage/door" in text[
         "config/smart-home-bridge.ini"
     ]
     assert "CHICKEN_DOOR_USAGE_TOPIC" in text["webfrontend/htmlauth/plugin.php"]
     assert "DOOR_POLL_INTERVAL_SECONDS" in text["webfrontend/htmlauth/plugin.php"]
+    assert "DOOR_API_TIMEOUT_SECONDS" in text["webfrontend/htmlauth/plugin.php"]
     assert "Latest polled state" in text["webfrontend/htmlauth/plugin.php"]
     assert "door-poll-status" in text["webfrontend/htmlauth/index.php"]
     assert "formatDoorPollStatus" in text["webfrontend/htmlauth/index.php"]
@@ -152,6 +161,7 @@ def test_camera_plugin_contains_only_camera_configuration(tmp_path):
     plugin_config.read_string(text["plugin.cfg"])
     assert plugin_config["PLUGIN"]["FOLDER"] == "chickenbarncamera"
     assert plugin_config["PLUGIN"]["TITLE"] == "ChickenBarnCameraPlugin"
+    assert plugin_config["PLUGIN"]["VERSION"] == "0.1.3"
     assert "BRIDGE_DEVICES_ENABLED=chicken_thread_detector" in text[
         "config/smart-home-bridge.ini"
     ]
@@ -190,19 +200,110 @@ def test_shared_lifecycle_installs_runtime_in_plugin_specific_paths(tmp_path):
     assert 'DATA_DIR="${LBPDATA:?}/${PLUGIN_FOLDER}"' in postinstall
     assert 'PACKAGE_DIR="${DATA_DIR}/python-package"' in postinstall
     assert 'VENV_DIR="${DATA_DIR}/venv"' in postinstall
-    assert 'python3 -m venv "$VENV_DIR"' in postinstall
-    assert '"$VENV_BIN/python" -m pip install --upgrade "$PACKAGE_DIR"' in postinstall
+    assert 'VENV_CANDIDATE="$(mktemp -d "${DATA_DIR}/.venv-runtime-XXXXXX")"' in postinstall
+    assert 'VENV_LINK="${VENV_CANDIDATE}.link"' in postinstall
+    assert 'previous_runtime="$(mktemp -d "${DATA_DIR}/.venv-legacy-XXXXXX")"' in postinstall
+    assert 'python3 -m venv "$VENV_CANDIDATE"' in postinstall
+    assert '--requirement "$BUILD_REQUIREMENTS_FILE"' in postinstall
+    assert '--requirement "$REQUIREMENTS_FILE"' in postinstall
+    assert "--no-build-isolation" in postinstall
+    assert "--no-deps" in postinstall
+    assert '"$VENV_CANDIDATE/bin/python" -m pip check' in postinstall
+    assert "import smart_home_bridge" in postinstall
+    assert 'mv -Tf "$VENV_LINK" "$VENV_DIR"' in postinstall
+    assert 'VENV_PREVIOUS_LINK="${DATA_DIR}/venv.previous"' in postinstall
     assert "smart-home-bridge-sync-mqtt-subscriptions" in postinstall
     assert '"$CONFIG_FILE"' in postinstall
-    assert 'kill -0 "$(cat "$PID_FILE")"' in preupgrade
+    assert '"$BRIDGE_CTL" is-running' in preupgrade
     assert '"$BRIDGE_CTL" stop' in preupgrade
-    assert 'elif [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")"' in postupgrade
+    assert '"$BRIDGE_CTL" is-running' in postupgrade
     assert 'RESTART_AFTER_UPGRADE=true' in postupgrade
     assert 'sh "${SCRIPT_DIR}/postinstall.sh"' in postupgrade
     assert '"$BRIDGE_CTL" start' in postupgrade
     assert "SMART_HOME_BRIDGE_CONFIG_SOURCE=loxberry" in bridge_ctl
     assert "export PLUGIN_FOLDER" in bridge_ctl
     assert "Door commands are not supported by $PLUGIN_TITLE" in bridge_ctl
+    assert 'smart-home-bridge-config-check" >/dev/null' in bridge_ctl
+    assert 'sleep "$STARTUP_GRACE_SECONDS"' in bridge_ctl
+    assert 'is_bridge_process "$BRIDGE_PID"' in bridge_ctl
+    assert '"/proc/${bridge_pid}/cmdline"' in bridge_ctl
+    assert '*"${VENV_BIN}/smart-home-bridge"*' in bridge_ctl
+    assert 'rm -f "$PID_FILE"' in bridge_ctl
+
+
+@pytest.mark.skipif(os.name == "nt", reason="requires Linux /proc process metadata")
+@pytest.mark.parametrize(
+    ("process_plugin", "expected_running"),
+    (("omletchickendoor", True), ("chickenbarncamera", False)),
+)
+def test_control_script_matches_only_its_plugin_process(
+    tmp_path,
+    process_plugin,
+    expected_running,
+):
+    packager = load_loxberry_packager()
+    archive_path = packager.build_plugin_archive(
+        "omlet-chicken-door",
+        tmp_path / "door.zip",
+    )
+    with ZipFile(archive_path) as archive:
+        bridge_ctl = tmp_path / "bridge_ctl.sh"
+        bridge_ctl.write_bytes(archive.read("bin/bridge_ctl.sh"))
+    bridge_ctl.chmod(0o755)
+
+    data_dir = tmp_path / "data"
+    process_command = (
+        data_dir
+        / process_plugin
+        / "venv"
+        / "bin"
+        / "smart-home-bridge"
+    )
+    process_command.parent.mkdir(parents=True)
+    sleep_command = shutil.which("sleep")
+    assert sleep_command is not None
+    shutil.copy2(sleep_command, process_command)
+
+    log_dir = tmp_path / "logs" / "omletchickendoor"
+    log_dir.mkdir(parents=True)
+    process = subprocess.Popen([process_command, "30"])
+    try:
+        (log_dir / "smart-home-bridge.pid").write_text(
+            str(process.pid),
+            encoding="utf-8",
+        )
+        environment = {
+            **os.environ,
+            "LBPBIN": str(tmp_path / "bin"),
+            "LBPCONFIG": str(tmp_path / "config"),
+            "LBHOMEDIR": str(tmp_path / "loxberry"),
+            "LBPDATA": str(data_dir),
+            "LBPLOG": str(tmp_path / "logs"),
+        }
+
+        result = subprocess.run(
+            ["/bin/sh", bridge_ctl, "is-running"],
+            env=environment,
+            check=False,
+        )
+
+        assert (result.returncode == 0) is expected_running
+    finally:
+        process.terminate()
+        process.wait(timeout=5)
+
+
+def test_loxberry_runtime_requirements_pin_all_runtime_dependencies():
+    requirements = Path("requirements-loxberry.txt").read_text().splitlines()
+
+    assert requirements
+    assert all("==" in line for line in requirements if line.strip())
+    assert any(line.startswith("smartcoop-python-sdk==") for line in requirements)
+    assert any(line.startswith("requests==") for line in requirements)
+    assert any(line.startswith("paho-mqtt==") for line in requirements)
+
+    build_requirements = Path("requirements-loxberry-build.txt").read_text().splitlines()
+    assert build_requirements == ["setuptools==83.0.0"]
 
 
 def test_shared_web_panel_preserves_fixed_device_profile():
@@ -282,6 +383,7 @@ def test_archives_mark_lifecycle_and_control_scripts_executable(tmp_path):
         ):
             mode = archive.getinfo(name).external_attr >> 16
             assert mode & 0o111
+            assert b"\r\n" not in archive.read(name)
 
 
 def test_plugins_have_distinct_vector_and_generated_raster_icons(tmp_path):

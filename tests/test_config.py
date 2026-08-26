@@ -456,6 +456,32 @@ def test_load_config_uses_default_door_polling_interval(tmp_path, monkeypatch):
     assert config.door_polling.poll_interval_seconds == 5
 
 
+def test_load_config_uses_configured_door_api_timeout(tmp_path, monkeypatch):
+    monkeypatch.delenv("DOOR_API_TIMEOUT_SECONDS", raising=False)
+    env_path = _write_minimum_env(
+        tmp_path,
+        "DOOR_API_TIMEOUT_SECONDS=7.5",
+    )
+
+    config = load_config(str(env_path), override=True)
+
+    assert config.door_api.request_timeout_seconds == 7.5
+
+
+def test_load_config_rejects_non_positive_door_api_timeout(tmp_path, monkeypatch):
+    env_path = _write_minimum_env(tmp_path)
+
+    monkeypatch.setenv("DOOR_API_TIMEOUT_SECONDS", "0")
+    try:
+        load_config(str(env_path), override=False)
+    except ValueError as exc:
+        assert str(exc) == (
+            "Environment variable DOOR_API_TIMEOUT_SECONDS must be greater than zero"
+        )
+    else:
+        raise AssertionError("Expected a non-positive API timeout to be rejected")
+
+
 def test_load_config_accepts_fractional_door_polling_interval(
     tmp_path,
     monkeypatch,

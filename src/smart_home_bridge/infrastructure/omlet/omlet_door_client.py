@@ -2,11 +2,65 @@ import logging
 from collections.abc import Callable
 from typing import Any
 
+import requests
+
 from smart_home_bridge.bridge_devices.chicken_door import door_position
 from smart_home_bridge.bridge_devices.chicken_door.door_status import door_status
 from smart_home_bridge.config import DoorApiConfig
 
 logger = logging.getLogger(__name__)
+
+
+class SmartCoopHttpClient:
+    base_url = "https://x107.omlet.co.uk/api/v1"
+
+    def __init__(
+        self,
+        client_secret: str,
+        timeout_seconds: float,
+        session: requests.Session | None = None,
+    ):
+        self.client_secret = client_secret
+        self.timeout_seconds = timeout_seconds
+        self.session = session or requests.Session()
+
+    def get(self, endpoint: str, params=None):
+        return self._request("GET", endpoint, params=params)
+
+    def post(self, endpoint: str, json=None):
+        return self._request("POST", endpoint, json=json)
+
+    def patch(self, endpoint: str, json=None):
+        return self._request("PATCH", endpoint, json=json)
+
+    def delete(self, endpoint: str, json=None):
+        return self._request("DELETE", endpoint, json=json)
+
+    def _request(self, method: str, endpoint: str, **kwargs):
+        url = f"{self.base_url}/{endpoint.lstrip('/')}"
+        response = self.session.request(
+            method,
+            url,
+            headers={
+                "Authorization": f"Bearer {self.client_secret}",
+                "Content-Type": "application/json",
+            },
+            timeout=self.timeout_seconds,
+            **kwargs,
+        )
+        try:
+            response.raise_for_status()
+        except requests.HTTPError:
+            logger.error(
+                "%s %s failed with status %s",
+                method,
+                url,
+                response.status_code,
+            )
+            raise
+        if response.status_code == 204:
+            return None
+        return response.json()
 
 
 class OmletDoorClient:
@@ -17,12 +71,15 @@ class OmletDoorClient:
         omlet_factory: Callable[[Any], Any] | None = None,
     ):
         self.config = config
-        if client_factory is None or omlet_factory is None:
+        if omlet_factory is None:
             from smartcoop.api.omlet import Omlet
-            from smartcoop.client import SmartCoopClient
 
-            client_factory = client_factory or SmartCoopClient
-            omlet_factory = omlet_factory or Omlet
+            omlet_factory = Omlet
+        if client_factory is None:
+            client_factory = lambda api_key: SmartCoopHttpClient(
+                api_key,
+                config.request_timeout_seconds,
+            )
 
         self._omlet = omlet_factory(client_factory(config.api_key))
 
