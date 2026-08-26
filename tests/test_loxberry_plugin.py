@@ -81,6 +81,7 @@ def test_each_archive_combines_shared_runtime_with_device_profile(tmp_path):
         "mqtt_subscriptions.cfg",
         "data/python-package/pyproject.toml",
         "data/python-package/README.MD",
+        "data/python-package/requirements-loxberry-build.txt",
         "data/python-package/requirements-loxberry.txt",
         "data/python-package/src/smart_home_bridge/__main__.py",
         "data/python-package/src/smart_home_bridge/bridge_devices/chicken_door/door_state_polling.py",
@@ -196,6 +197,7 @@ def test_shared_lifecycle_installs_runtime_in_plugin_specific_paths(tmp_path):
     assert 'VENV_DIR="${DATA_DIR}/venv"' in postinstall
     assert 'VENV_CANDIDATE="${DATA_DIR}/.venv-runtime-$$"' in postinstall
     assert 'python3 -m venv "$VENV_CANDIDATE"' in postinstall
+    assert '--requirement "$BUILD_REQUIREMENTS_FILE"' in postinstall
     assert '--requirement "$REQUIREMENTS_FILE"' in postinstall
     assert "--no-build-isolation" in postinstall
     assert "--no-deps" in postinstall
@@ -229,6 +231,9 @@ def test_loxberry_runtime_requirements_pin_all_runtime_dependencies():
     assert any(line.startswith("smartcoop-python-sdk==") for line in requirements)
     assert any(line.startswith("requests==") for line in requirements)
     assert any(line.startswith("paho-mqtt==") for line in requirements)
+
+    build_requirements = Path("requirements-loxberry-build.txt").read_text().splitlines()
+    assert build_requirements == ["setuptools==83.0.0"]
 
 
 def test_shared_web_panel_preserves_fixed_device_profile():

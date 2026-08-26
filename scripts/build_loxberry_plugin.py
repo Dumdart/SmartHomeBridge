@@ -27,6 +27,7 @@ PYTHON_PACKAGE_ROOT = "data/python-package"
 PYTHON_PACKAGE_FILES = (
     PROJECT_ROOT / "pyproject.toml",
     PROJECT_ROOT / "README.MD",
+    PROJECT_ROOT / "requirements-loxberry-build.txt",
     PROJECT_ROOT / "requirements-loxberry.txt",
 )
 PYTHON_PACKAGE_SOURCE_DIRS = (

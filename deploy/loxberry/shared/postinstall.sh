@@ -9,6 +9,7 @@ DATA_DIR="${LBPDATA:?}/${PLUGIN_FOLDER}"
 LOG_DIR="${LBPLOG:?}/${PLUGIN_FOLDER}"
 BIN_DIR="${LBPBIN:?}/${PLUGIN_FOLDER}"
 PACKAGE_DIR="${DATA_DIR}/python-package"
+BUILD_REQUIREMENTS_FILE="${PACKAGE_DIR}/requirements-loxberry-build.txt"
 REQUIREMENTS_FILE="${PACKAGE_DIR}/requirements-loxberry.txt"
 VENV_DIR="${DATA_DIR}/venv"
 VENV_BIN="${VENV_DIR}/bin"
@@ -51,14 +52,18 @@ if [ ! -f "$PACKAGE_DIR/pyproject.toml" ]; then
     exit 1
 fi
 
-if [ ! -f "$REQUIREMENTS_FILE" ]; then
-    echo "<WARNING> SmartHomeBridge runtime requirements not found at $REQUIREMENTS_FILE"
+if [ ! -f "$BUILD_REQUIREMENTS_FILE" ] || [ ! -f "$REQUIREMENTS_FILE" ]; then
+    echo "<WARNING> SmartHomeBridge pinned requirements are incomplete at $PACKAGE_DIR"
     exit 1
 fi
 
 cleanup_previous_runtime
 python3 -m venv "$VENV_CANDIDATE"
-"$VENV_CANDIDATE/bin/python" -m pip install --requirement "$REQUIREMENTS_FILE"
+"$VENV_CANDIDATE/bin/python" -m pip install \
+    --requirement "$BUILD_REQUIREMENTS_FILE"
+"$VENV_CANDIDATE/bin/python" -m pip install \
+    --no-build-isolation \
+    --requirement "$REQUIREMENTS_FILE"
 "$VENV_CANDIDATE/bin/python" -m pip install \
     --no-build-isolation \
     --no-deps \
