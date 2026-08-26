@@ -85,8 +85,6 @@ async def main():
     try:
         await application.start()
         await application.wait_forever()
-    except Exception as e:
-        logger.exception("Error occurred: %s", e)
     finally:
         await application.stop()
 
