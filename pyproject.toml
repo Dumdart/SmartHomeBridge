@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "smart-home-bridge"
-version = "4.0.0"
+version = "4.0.1"
 description = "A bridge for connecting smart home systems to device integrations"
 readme = "README.MD"
 license = "MIT"

@@ -113,7 +113,7 @@ def test_omlet_plugin_contains_only_door_configuration(tmp_path):
     plugin_config.read_string(text["plugin.cfg"])
     assert plugin_config["PLUGIN"]["FOLDER"] == "omletchickendoor"
     assert plugin_config["PLUGIN"]["TITLE"] == "OmletChickenDoorPlugin"
-    assert plugin_config["PLUGIN"]["VERSION"] == "4.0.0"
+    assert plugin_config["PLUGIN"]["VERSION"] == "4.0.1"
     assert plugin_config["SYSTEM"]["INTERFACE"] == "2.0"
     assert "BRIDGE_DEVICES_ENABLED=chicken_door" in text[
         "config/smart-home-bridge.ini"
@@ -161,7 +161,7 @@ def test_camera_plugin_contains_only_camera_configuration(tmp_path):
     plugin_config.read_string(text["plugin.cfg"])
     assert plugin_config["PLUGIN"]["FOLDER"] == "chickenbarncamera"
     assert plugin_config["PLUGIN"]["TITLE"] == "ChickenBarnCameraPlugin"
-    assert plugin_config["PLUGIN"]["VERSION"] == "4.0.0"
+    assert plugin_config["PLUGIN"]["VERSION"] == "4.0.1"
     assert "BRIDGE_DEVICES_ENABLED=chicken_thread_detector" in text[
         "config/smart-home-bridge.ini"
     ]
